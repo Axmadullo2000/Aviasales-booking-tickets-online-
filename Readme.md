@@ -1,4 +1,4 @@
-# Booking & Delivery Platform (Aviasales-style)
+# Booking tickets (Aviasales-style)
 
 A high-performance **Booking & Delivery Platform** built with **Java 21**, **Spring Boot 3.2+**, and **microservice architecture**. The system is designed to handle high-scale booking, event-driven workflows, and real-time flight or delivery search capabilities. It leverages modern patterns such as **Event Sourcing**, **CQRS**, and **DDD** to ensure maintainability, scalability, and flexibility.
 
