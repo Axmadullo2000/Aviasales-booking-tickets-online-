@@ -9,12 +9,12 @@ import com.monolit.booking.booking.mapper.PaymentMapper;
 import com.monolit.booking.booking.repo.*;
 import com.monolit.booking.booking.service.interfaces.NotificationService;
 import com.monolit.booking.booking.service.interfaces.PaymentService;
+import com.monolit.booking.booking.service.interfaces.ReceiptService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -27,6 +27,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final BookingRepository bookingRepository;
     private final PaymentMapper paymentMapper;
     private final NotificationService notificationService;
+    private final ReceiptService receiptService;
 
     @Override
     @Transactional
@@ -80,6 +81,10 @@ public class PaymentServiceImpl implements PaymentService {
             booking.setExpiresAt(null);
             bookingRepository.save(booking);
 
+            // Create receipt after successful payment
+            payment = paymentRepository.save(payment);
+            receiptService.createReceipt(payment, booking);
+
             log.info("Payment completed successfully for booking: {}", booking.getBookingReference());
             notificationService.notifyPaymentSuccess(payment);
         } else {
@@ -123,6 +128,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         bookingRepository.save(booking);
         payment = paymentRepository.save(payment);
+
+        // Create receipt after successful payment confirmation
+        receiptService.createReceipt(payment, booking);
 
         log.info("Payment confirmed for booking: {}", booking.getBookingReference());
         notificationService.notifyPaymentSuccess(payment);
