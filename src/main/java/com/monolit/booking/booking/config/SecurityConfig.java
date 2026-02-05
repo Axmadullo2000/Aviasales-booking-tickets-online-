@@ -41,8 +41,18 @@ public class SecurityConfig {
                             "/swagger-ui/**",
                             "/v3/api-docs/**",
                             "/swagger-resources",
-                            "/webjars"
+                            "/webjars/**"
                     ).permitAll()
+                    .requestMatchers(
+                            "/api/flights/search",
+                            "/api/flights/airports",
+                            "/api/flights/airports/**",
+                            "/api/flights/airlines",
+                            "/api/flights/airlines/**",
+                            "/api/flights/popular-destinations"
+                    ).permitAll()
+                    .requestMatchers("/api/flights/{id}").permitAll()
+                    .requestMatchers("/api/flights/number/**").permitAll()
                     .anyRequest().authenticated())
                 .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
 

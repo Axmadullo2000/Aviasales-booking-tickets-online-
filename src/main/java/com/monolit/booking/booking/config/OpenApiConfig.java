@@ -17,11 +17,13 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Role Based JWT Auth API")
+                        .title("Aviasales Booking System API")
                         .version("1.0")
-                        .description("API для аутентификации с JWT и ролями")
+                        .description("API for flight search, booking, and payment processing. " +
+                                "Includes endpoints for managing flights, airports, airlines, " +
+                                "bookings, passengers, and payments.")
                         .contact(new Contact()
-                                .name("Your Name")
+                                .name("Aviasales Team")
                                 .email("axmadullo2000@gmail.com")))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
                 .components(new Components()
@@ -29,6 +31,8 @@ public class OpenApiConfig {
                                 new SecurityScheme()
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                                        .bearerFormat("JWT")
+                                        .description("JWT token for authentication. " +
+                                                "Get token from /api/v1/auth/login endpoint.")));
     }
 }

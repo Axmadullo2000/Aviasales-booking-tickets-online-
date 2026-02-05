@@ -29,7 +29,7 @@ public class AuthFilter extends OncePerRequestFilter {
         String authorization = request.getHeader("Authorization");
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
-            String token = authorization.replace("Bearer ", "");
+            String token = authorization.substring(7);
 
             try {
                 if (jwtService.isValid(token)) {
@@ -41,6 +41,12 @@ public class AuthFilter extends OncePerRequestFilter {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 jacksonMapper.writeValue(response.getOutputStream(), "EXPIRED");
+                return;
+            }catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                jacksonMapper.writeValue(response.getOutputStream(), "UNAUTHORIZED");
+                return;
             }
         }
 
