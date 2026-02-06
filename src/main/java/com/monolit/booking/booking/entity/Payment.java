@@ -7,8 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -49,9 +48,9 @@ public class Payment {
     private String cardLastFour;
 
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
-    private OffsetDateTime processedAt;
+    private Instant processedAt;
 
     private String failureReason;
 }

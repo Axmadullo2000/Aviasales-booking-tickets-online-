@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -62,7 +62,7 @@ public class Receipt {
     private String flightDetails;
 
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
-    private OffsetDateTime paymentDate;
+    private Instant paymentDate;
 }

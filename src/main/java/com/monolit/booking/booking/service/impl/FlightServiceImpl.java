@@ -16,7 +16,9 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,8 +38,8 @@ public class FlightServiceImpl implements FlightService {
         log.info("Searching flights from {} to {} on {}",
                 request.getDepartureAirport(), request.getArrivalAirport(), request.getDepartureDate());
 
-        OffsetDateTime startDate = request.getDepartureDate().atStartOfDay().atOffset(ZoneOffset.UTC);
-        OffsetDateTime endDate = request.getDepartureDate().plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+        Instant startDate = request.getDepartureDate().atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant endDate = request.getDepartureDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
         Sort sort = createSort(request.getSortBy(), request.getSeatClass());
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
@@ -96,6 +98,8 @@ public class FlightServiceImpl implements FlightService {
     public FlightDetailResponse createFlight(CreateFlightRequest request) {
         log.info("Creating flight: {}", request.getFlightNumber());
 
+        if (request.getDepartureTime().isAfter(request.getArrivalTime())) throw new IllegalArgumentException("Departure time should be after arrival time");
+
         Airline airline = airlineRepository.findByIataCode(request.getAirlineCode().toUpperCase())
                 .orElseThrow(() -> new AirlineNotFoundException(request.getAirlineCode(), true));
 
@@ -119,7 +123,7 @@ public class FlightServiceImpl implements FlightService {
                 .availableSeats(request.getTotalSeats())
                 .priceEconomy(request.getPriceEconomy())
                 .priceBusiness(request.getPriceBusiness())
-                .status(request.getStatus() != null ? request.getStatus() : FlightStatus.SCHEDULED)
+                .status(FlightStatus.SCHEDULED)
                 .build();
 
         flight = flightRepository.save(flight);

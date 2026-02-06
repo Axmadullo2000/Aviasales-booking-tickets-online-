@@ -5,8 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -31,11 +30,11 @@ public class CreateFlightRequest {
 
     @NotNull(message = "Departure time is required")
     @Future(message = "Departure time must be in the future")
-    private OffsetDateTime departureTime;
+    private Instant departureTime;
 
     @NotNull(message = "Arrival time is required")
     @Future(message = "Arrival time must be in the future")
-    private OffsetDateTime arrivalTime;
+    private Instant arrivalTime;
 
     @NotNull(message = "Total seats is required")
     @Min(value = 1, message = "Total seats must be at least 1")
@@ -48,6 +47,4 @@ public class CreateFlightRequest {
     @NotNull(message = "Business price is required")
     @DecimalMin(value = "0.01", message = "Business price must be greater than 0")
     private BigDecimal priceBusiness;
-
-    private FlightStatus status = FlightStatus.SCHEDULED;
 }

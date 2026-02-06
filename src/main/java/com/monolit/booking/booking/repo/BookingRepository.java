@@ -10,8 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,7 +24,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByUserIdAndStatus(Long userId, BookingStatus status);
 
     @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.expiresAt < :now")
-    List<Booking> findExpiredBookings(@Param("status") BookingStatus status, @Param("now") OffsetDateTime now);
+    List<Booking> findExpiredBookings(@Param("status") BookingStatus status, @Param("now") Instant now);
 
     boolean existsByBookingReference(String bookingReference);
     @EntityGraph(attributePaths = {"bookingFlights", "passengers"})

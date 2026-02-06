@@ -3,7 +3,7 @@ package com.monolit.booking.booking.dto.response;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,6 +25,6 @@ public class ReceiptResponse {
     private String cardLastFour;
     private String passengerName;
     private String flightDetails;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime paymentDate;
+    private Instant createdAt;
+    private Instant paymentDate;
 }

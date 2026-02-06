@@ -3,8 +3,7 @@ package com.monolit.booking.booking.dto.response;
 import com.monolit.booking.booking.enums.PaymentStatus;
 import lombok.*;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -14,6 +13,6 @@ public class PaymentStatusResponse {
 
     private PaymentStatus status;
     private String transactionId;
-    private OffsetDateTime processedAt;
+    private Instant processedAt;
     private String failureReason;
 }

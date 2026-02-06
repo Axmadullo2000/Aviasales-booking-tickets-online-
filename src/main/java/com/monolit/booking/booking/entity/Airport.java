@@ -38,4 +38,5 @@ public class Airport implements Serializable {
 
     @Builder.Default
     private Boolean isActive = true;
+
 }

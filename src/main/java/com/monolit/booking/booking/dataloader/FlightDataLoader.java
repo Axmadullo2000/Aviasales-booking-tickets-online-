@@ -10,8 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -196,10 +197,11 @@ public class FlightDataLoader {
 
         List<Flight> flights = new ArrayList<>();
 
-        // Используем OffsetDateTime с конкретной timezone (например, Asia/Tashkent для Ташкента)
-        OffsetDateTime baseTime = OffsetDateTime.now(ZoneId.of("Asia/Tashkent"))
+        // Используем ZonedDateTime для создания времени, затем конвертируем в Instant
+        ZonedDateTime baseZoned = ZonedDateTime.now(ZoneId.of("Asia/Tashkent"))
                 .plusHours(2)
                 .truncatedTo(ChronoUnit.HOURS);
+        Instant baseTime = baseZoned.toInstant();
 
         // Рейсы Ташкент - Москва
         flights.add(createFlight("HY501", airlineMap.get("HY"),
@@ -209,108 +211,108 @@ public class FlightDataLoader {
 
         flights.add(createFlight("HY503", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("SVO"),
-                baseTime.plusDays(1).withHour(8), 245, 180,
+                baseZoned.plusDays(1).withHour(8).toInstant(), 245, 180,
                 new BigDecimal("230"), new BigDecimal("600")));
 
         flights.add(createFlight("HY505", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("SVO"),
-                baseTime.plusDays(2).withHour(14), 240, 180,
+                baseZoned.plusDays(2).withHour(14).toInstant(), 240, 180,
                 new BigDecimal("260"), new BigDecimal("680")));
 
         // Рейсы Москва - Ташкент
         flights.add(createFlight("SU1876", airlineMap.get("SU"),
                 airportMap.get("SVO"), airportMap.get("TAS"),
-                baseTime.plusHours(6), 255, 200,
+                baseZoned.plusHours(6).toInstant(), 255, 200,
                 new BigDecimal("280"), new BigDecimal("720")));
 
         flights.add(createFlight("SU1878", airlineMap.get("SU"),
                 airportMap.get("SVO"), airportMap.get("TAS"),
-                baseTime.plusDays(1).withHour(10), 250, 200,
+                baseZoned.plusDays(1).withHour(10).toInstant(), 250, 200,
                 new BigDecimal("265"), new BigDecimal("690")));
 
         // Рейсы Ташкент - Дубай
         flights.add(createFlight("HY601", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("DXB"),
-                baseTime.plusHours(3), 195, 180,
+                baseZoned.plusHours(3).toInstant(), 195, 180,
                 new BigDecimal("320"), new BigDecimal("850")));
 
         flights.add(createFlight("EK378", airlineMap.get("EK"),
                 airportMap.get("DXB"), airportMap.get("TAS"),
-                baseTime.plusDays(1).withHour(2), 200, 250,
+                baseZoned.plusDays(1).withHour(2).toInstant(), 200, 250,
                 new BigDecimal("350"), new BigDecimal("950")));
 
         // Рейсы Ташкент - Стамбул
         flights.add(createFlight("TK367", airlineMap.get("TK"),
                 airportMap.get("TAS"), airportMap.get("IST"),
-                baseTime.plusHours(4), 330, 220,
+                baseZoned.plusHours(4).toInstant(), 330, 220,
                 new BigDecimal("380"), new BigDecimal("1100")));
 
         flights.add(createFlight("TK366", airlineMap.get("TK"),
                 airportMap.get("IST"), airportMap.get("TAS"),
-                baseTime.plusDays(1).withHour(6), 335, 220,
+                baseZoned.plusDays(1).withHour(6).toInstant(), 335, 220,
                 new BigDecimal("395"), new BigDecimal("1150")));
 
         // Рейс Ташкент - Санкт-Петербург
         flights.add(createFlight("HY701", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("LED"),
-                baseTime.plusDays(2).withHour(7), 285, 160,
+                baseZoned.plusDays(2).withHour(7).toInstant(), 285, 160,
                 new BigDecimal("290"), new BigDecimal("750")));
 
         // Внутренние рейсы Узбекистана
         flights.add(createFlight("HY55", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("SKD"),
-                baseTime.plusHours(1), 55, 120,
+                baseZoned.plusHours(1).toInstant(), 55, 120,
                 new BigDecimal("45"), new BigDecimal("120")));
 
         flights.add(createFlight("HY57", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("BHK"),
-                baseTime.plusDays(1).withHour(16), 65, 120,
+                baseZoned.plusDays(1).withHour(16).toInstant(), 65, 120,
                 new BigDecimal("50"), new BigDecimal("130")));
 
         flights.add(createFlight("HY61", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("FRU"),
-                baseTime.plusHours(5), 70, 100,
+                baseZoned.plusHours(5).toInstant(), 70, 100,
                 new BigDecimal("85"), new BigDecimal("220")));
 
         // Дополнительные рейсы на неделю
         for (int i = 0; i < 7; i++) {
             flights.add(createFlight("HY50" + (7 + i), airlineMap.get("HY"),
                     airportMap.get("TAS"), airportMap.get("SVO"),
-                    baseTime.plusDays(3 + i).withHour(9), 245, 180,
+                    baseZoned.plusDays(3 + i).withHour(9).toInstant(), 245, 180,
                     new BigDecimal("240"), new BigDecimal("620")));
         }
 
         // Ночные рейсы
         flights.add(createFlight("TK368", airlineMap.get("TK"),
                 airportMap.get("TAS"), airportMap.get("IST"),
-                baseTime.plusDays(3).withHour(23), 325, 220,
+                baseZoned.plusDays(3).withHour(23).toInstant(), 325, 220,
                 new BigDecimal("360"), new BigDecimal("1050")));
 
         flights.add(createFlight("EK380", airlineMap.get("EK"),
                 airportMap.get("DXB"), airportMap.get("TAS"),
-                baseTime.plusDays(4).withHour(4), 195, 280,
+                baseZoned.plusDays(4).withHour(4).toInstant(), 195, 280,
                 new BigDecimal("340"), new BigDecimal("920")));
 
         flights.add(createFlight("SU1880", airlineMap.get("SU"),
                 airportMap.get("SVO"), airportMap.get("TAS"),
-                baseTime.plusDays(5).withHour(12), 250, 200,
+                baseZoned.plusDays(5).withHour(12).toInstant(), 250, 200,
                 new BigDecimal("275"), new BigDecimal("710")));
 
         // Транзитные рейсы
         flights.add(createFlight("QR340", airlineMap.get("QR"),
                 airportMap.get("DXB"), airportMap.get("IST"),
-                baseTime.plusDays(2).withHour(8), 240, 300,
+                baseZoned.plusDays(2).withHour(8).toInstant(), 240, 300,
                 new BigDecimal("420"), new BigDecimal("1200")));
 
         flights.add(createFlight("TK180", airlineMap.get("TK"),
                 airportMap.get("IST"), airportMap.get("SVO"),
-                baseTime.plusDays(3).withHour(11), 165, 200,
+                baseZoned.plusDays(3).withHour(11).toInstant(), 165, 200,
                 new BigDecimal("180"), new BigDecimal("480")));
 
         // Задержанный рейс
         Flight delayedFlight = createFlight("HY999", airlineMap.get("HY"),
                 airportMap.get("TAS"), airportMap.get("SVO"),
-                baseTime.plusDays(1).withHour(20), 250, 180,
+                baseZoned.plusDays(1).withHour(20).toInstant(), 250, 180,
                 new BigDecimal("220"), new BigDecimal("580"));
         delayedFlight.setStatus(FlightStatus.DELAYED);
         flights.add(delayedFlight);
@@ -321,7 +323,7 @@ public class FlightDataLoader {
 
     private Flight createFlight(String flightNumber, Airline airline,
                                 Airport departure, Airport arrival,
-                                OffsetDateTime departureTime, int durationMinutes,
+                                Instant departureTime, int durationMinutes,
                                 int totalSeats, BigDecimal priceEconomy,
                                 BigDecimal priceBusiness) {
         return Flight.builder()
@@ -330,7 +332,7 @@ public class FlightDataLoader {
                 .departureAirport(departure)
                 .arrivalAirport(arrival)
                 .departureTime(departureTime)
-                .arrivalTime(departureTime.plusMinutes(durationMinutes))
+                .arrivalTime(departureTime.plusSeconds(durationMinutes * 60L))
                 .durationMinutes(durationMinutes)
                 .totalSeats(totalSeats)
                 .availableSeats(totalSeats)

@@ -4,8 +4,7 @@ import com.monolit.booking.booking.enums.BookingStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -18,9 +17,9 @@ public class BookingDetailResponse {
     private String bookingReference;
     private BookingStatus status;
     private BigDecimal totalPrice;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime expiresAt;
-    private OffsetDateTime confirmedAt;
+    private Instant createdAt;
+    private Instant expiresAt;
+    private Instant confirmedAt;
     private List<BookingFlightResponse> flights;
     private List<PassengerResponse> passengers;
 }

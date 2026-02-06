@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @Slf4j
@@ -21,9 +22,10 @@ public class TicketPdfService {
 
     private final FlightRepository flightRepository;
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter LOCAL_DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     // Uzbekistan Airways brand colors
     private static final Color UZ_AIRWAYS_BLUE = new Color(0, 51, 153);
@@ -155,7 +157,7 @@ public class TicketPdfService {
         dateCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         Paragraph dateLabel = new Paragraph("Issue Date", statusLabelFont);
         dateLabel.setAlignment(Element.ALIGN_RIGHT);
-        Paragraph dateValue = new Paragraph(booking.getCreatedAt().format(DATE_FORMAT), statusValueFont);
+        Paragraph dateValue = new Paragraph(DATE_FORMAT.format(booking.getCreatedAt()), statusValueFont);
         dateValue.setAlignment(Element.ALIGN_RIGHT);
         dateCell.addElement(dateLabel);
         dateCell.addElement(dateValue);
@@ -222,8 +224,8 @@ public class TicketPdfService {
                 flight.getDepartureAirport().getCity(),
                 flight.getDepartureAirport().getIataCode(),
                 flight.getDepartureAirport().getName(),
-                flight.getDepartureTime().format(DATE_FORMAT),
-                flight.getDepartureTime().format(TIME_FORMAT),
+                DATE_FORMAT.format(flight.getDepartureTime()),
+                TIME_FORMAT.format(flight.getDepartureTime()),
                 Element.ALIGN_LEFT
         );
         routeTable.addCell(depCell);
@@ -258,8 +260,8 @@ public class TicketPdfService {
                 flight.getArrivalAirport().getCity(),
                 flight.getArrivalAirport().getIataCode(),
                 flight.getArrivalAirport().getName(),
-                flight.getArrivalTime().format(DATE_FORMAT),
-                flight.getArrivalTime().format(TIME_FORMAT),
+                DATE_FORMAT.format(flight.getArrivalTime()),
+                TIME_FORMAT.format(flight.getArrivalTime()),
                 Element.ALIGN_RIGHT
         );
         routeTable.addCell(arrCell);
@@ -356,7 +358,7 @@ public class TicketPdfService {
 
             addPassengerCell(table, passenger.getFirstName() + " " + passenger.getLastName(), normalFont, rowColor);
             addPassengerCell(table, passenger.getPassportNumber(), normalFont, rowColor);
-            addPassengerCell(table, passenger.getDateOfBirth().format(DATE_FORMAT), normalFont, rowColor);
+            addPassengerCell(table, passenger.getDateOfBirth().format(LOCAL_DATE_FORMAT), normalFont, rowColor);
             addPassengerCell(table, passenger.getNationality(), normalFont, rowColor);
             addPassengerCell(table, passenger.getSeatNumber() != null ? passenger.getSeatNumber() : "TBA", normalFont, rowColor);
         }
@@ -542,7 +544,7 @@ public class TicketPdfService {
         document.add(info3);
 
         Paragraph info4 = new Paragraph(
-                "• For flight status and inquiries, call +998 78 140 0101 or visit www.uzairways.com",
+                "• For flight status and inquiries, call +998 99 749 42 62",
                 normalFont
         );
         document.add(info4);

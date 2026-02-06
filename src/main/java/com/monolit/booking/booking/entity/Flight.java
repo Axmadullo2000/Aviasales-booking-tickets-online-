@@ -8,7 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -47,10 +47,10 @@ public class Flight implements Serializable {
     private Airport arrivalAirport;
 
     @Column(nullable = false)
-    private OffsetDateTime departureTime;
+    private Instant departureTime;
 
     @Column(nullable = false)
-    private OffsetDateTime arrivalTime;
+    private Instant arrivalTime;
 
     private Integer durationMinutes;
 
@@ -71,10 +71,10 @@ public class Flight implements Serializable {
     private FlightStatus status = FlightStatus.SCHEDULED;
 
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
-    private OffsetDateTime updatedAt;
+    private Instant updatedAt;
 
     public synchronized boolean reserveSeats(int count) {
         if (availableSeats >= count) {

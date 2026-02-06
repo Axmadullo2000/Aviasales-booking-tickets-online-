@@ -12,8 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -31,7 +30,7 @@ public class BookingExpirationScheduler {
 
         List<Booking> expiredBookings = bookingRepository.findExpiredBookings(
                 BookingStatus.PENDING,
-                OffsetDateTime.now()
+                Instant.now()
         );
 
         if (expiredBookings.isEmpty()) {

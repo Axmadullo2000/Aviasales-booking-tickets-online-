@@ -19,8 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,7 +57,7 @@ public class BookingServiceImpl implements BookingService {
                 .userId(userId)
                 .status(BookingStatus.PENDING)
                 .totalPrice(BigDecimal.ZERO)
-                .expiresAt(OffsetDateTime.now().plusMinutes(EXPIRATION_MINUTES))
+                .expiresAt(Instant.now().plusSeconds(EXPIRATION_MINUTES * 60))
                 .build();
 
         for (BookingFlightRequest flightRequest : request.getFlights()) {
@@ -156,7 +155,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus(BookingStatus.CONFIRMED);
-        booking.setConfirmedAt(OffsetDateTime.now());
+        booking.setConfirmedAt(Instant.now());
         booking.setExpiresAt(null);
 
         booking = bookingRepository.save(booking);

@@ -5,8 +5,7 @@ import com.monolit.booking.booking.enums.PaymentStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -22,5 +21,5 @@ public class PaymentResponse {
     private PaymentStatus status;
     private String transactionId;
     private String cardLastFour;
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 }

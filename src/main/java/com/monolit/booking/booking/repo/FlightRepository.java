@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,8 +28,8 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
     Page<Flight> searchFlights(
             @Param("departureAirport") String departureAirport,
             @Param("arrivalAirport") String arrivalAirport,
-            @Param("startDate") OffsetDateTime startDate,
-            @Param("endDate") OffsetDateTime endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             @Param("passengers") Integer passengers,
             @Param("status") FlightStatus status,
             Pageable pageable);
@@ -43,16 +43,16 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
     Page<Flight> searchFlightsAllStatuses(
             @Param("departureAirport") String departureAirport,
             @Param("arrivalAirport") String arrivalAirport,
-            @Param("startDate") OffsetDateTime startDate,
-            @Param("endDate") OffsetDateTime endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             @Param("passengers") Integer passengers,
             Pageable pageable);
 
     List<Flight> findByDepartureAirportIataCodeAndDepartureTimeBetween(
-            String iataCode, OffsetDateTime start, OffsetDateTime end);
+            String iataCode, Instant start, Instant end);
 
     List<Flight> findByArrivalAirportIataCodeAndArrivalTimeBetween(
-            String iataCode, OffsetDateTime start, OffsetDateTime end);
+            String iataCode, Instant start, Instant end);
 
     @Query("SELECT f.arrivalAirport, COUNT(f) as flightCount FROM Flight f " +
            "WHERE f.status = 'SCHEDULED' " +

@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
@@ -74,10 +74,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (paymentSuccess) {
             payment.setStatus(PaymentStatus.COMPLETED);
-            payment.setProcessedAt(OffsetDateTime.now());
+            payment.setProcessedAt(Instant.now());
 
             booking.setStatus(BookingStatus.CONFIRMED);
-            booking.setConfirmedAt(OffsetDateTime.now());
+            booking.setConfirmedAt(Instant.now());
             booking.setExpiresAt(null);
             bookingRepository.save(booking);
 
@@ -90,7 +90,7 @@ public class PaymentServiceImpl implements PaymentService {
         } else {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Payment declined by card issuer");
-            payment.setProcessedAt(OffsetDateTime.now());
+            payment.setProcessedAt(Instant.now());
 
             log.warn("Payment failed for booking: {}", booking.getBookingReference());
             notificationService.notifyPaymentFailed(payment);
@@ -120,10 +120,10 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         payment.setStatus(PaymentStatus.COMPLETED);
-        payment.setProcessedAt(OffsetDateTime.now());
+        payment.setProcessedAt(Instant.now());
 
         booking.setStatus(BookingStatus.CONFIRMED);
-        booking.setConfirmedAt(OffsetDateTime.now());
+        booking.setConfirmedAt(Instant.now());
         booking.setExpiresAt(null);
 
         bookingRepository.save(booking);
@@ -180,7 +180,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         payment.setStatus(PaymentStatus.REFUNDED);
-        payment.setProcessedAt(OffsetDateTime.now());
+        payment.setProcessedAt(Instant.now());
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);

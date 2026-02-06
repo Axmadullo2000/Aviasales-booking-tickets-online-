@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -28,7 +29,7 @@ public class ReceiptServiceImpl implements ReceiptService {
     private final FlightRepository flightRepository;
     private final ReceiptPdfService receiptPdfService;
 
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm");
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm").withZone(ZoneId.systemDefault());
     private static final BigDecimal TAX_RATE = new BigDecimal("0.12"); // 12% tax
     private static final BigDecimal SERVICE_FEE_RATE = new BigDecimal("0.03"); // 3% service fee
 
@@ -157,7 +158,7 @@ public class ReceiptServiceImpl implements ReceiptService {
                 sb.append(" → ").append(flight.getArrivalAirport().getCity());
                 sb.append(" (").append(flight.getArrivalAirport().getIataCode()).append(")");
                 sb.append("\n");
-                sb.append("Departure: ").append(flight.getDepartureTime().format(DATE_TIME_FORMAT));
+                sb.append("Departure: ").append(DATE_TIME_FORMAT.format(flight.getDepartureTime()));
                 sb.append("\n");
                 sb.append("Class: ").append(bookingFlight.getSeatClass().name());
                 sb.append(" | Passengers: ").append(bookingFlight.getPassengerCount());

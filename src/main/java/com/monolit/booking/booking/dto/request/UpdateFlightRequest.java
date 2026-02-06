@@ -5,8 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -15,10 +14,10 @@ import java.time.OffsetDateTime;
 public class UpdateFlightRequest {
 
     @Future(message = "Departure time must be in the future")
-    private OffsetDateTime departureTime;
+    private Instant departureTime;
 
     @Future(message = "Arrival time must be in the future")
-    private OffsetDateTime arrivalTime;
+    private Instant arrivalTime;
 
     @Min(value = 1, message = "Total seats must be at least 1")
     private Integer totalSeats;

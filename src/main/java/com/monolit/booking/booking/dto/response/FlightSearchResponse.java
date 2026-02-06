@@ -5,8 +5,7 @@ import lombok.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -19,8 +18,8 @@ public class FlightSearchResponse implements Serializable {
     private AirlineResponse airline;
     private AirportResponse departureAirport;
     private AirportResponse arrivalAirport;
-    private OffsetDateTime departureTime;
-    private OffsetDateTime arrivalTime;
+    private Instant departureTime;
+    private Instant arrivalTime;
     private Integer durationMinutes;
     private BigDecimal price;
     private Integer availableSeats;

@@ -11,8 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.*;
 
 @Slf4j
@@ -158,8 +159,8 @@ public class BookingDataLoader {
                 .userId(userId)
                 .status(BookingStatus.CONFIRMED)
                 .totalPrice(totalPrice)
-                .createdAt(OffsetDateTime.now().minusDays(15))
-                .confirmedAt(OffsetDateTime.now().minusDays(14))
+                .createdAt(Instant.now().minus(Duration.ofDays(15)))
+                .confirmedAt(Instant.now().minus(Duration.ofDays(14)))
                 .expiresAt(null)
                 .build();
 
@@ -200,8 +201,8 @@ public class BookingDataLoader {
                 .userId(userId)
                 .status(BookingStatus.PENDING)
                 .totalPrice(totalPrice)
-                .createdAt(OffsetDateTime.now().minusHours(2))
-                .expiresAt(OffsetDateTime.now().plusHours(22))
+                .createdAt(Instant.now().minus(Duration.ofHours(2)))
+                .expiresAt(Instant.now().plus(Duration.ofHours(22)))
                 .build();
 
         BookingFlight bookingFlight = BookingFlight.builder()
@@ -235,8 +236,8 @@ public class BookingDataLoader {
                 .userId(userId)
                 .status(BookingStatus.CANCELLED)
                 .totalPrice(totalPrice)
-                .createdAt(OffsetDateTime.now().minusDays(20))
-                .confirmedAt(OffsetDateTime.now().minusDays(19))
+                .createdAt(Instant.now().minus(Duration.ofDays(20)))
+                .confirmedAt(Instant.now().minus(Duration.ofDays(19)))
                 .build();
 
         BookingFlight bookingFlight = BookingFlight.builder()
@@ -270,8 +271,8 @@ public class BookingDataLoader {
                 .userId(userId)
                 .status(BookingStatus.EXPIRED)
                 .totalPrice(totalPrice)
-                .createdAt(OffsetDateTime.now().minusDays(3))
-                .expiresAt(OffsetDateTime.now().minusDays(2))
+                .createdAt(Instant.now().minus(Duration.ofDays(3)))
+                .expiresAt(Instant.now().minus(Duration.ofDays(2)))
                 .build();
 
         BookingFlight bookingFlight = BookingFlight.builder()
@@ -348,7 +349,7 @@ public class BookingDataLoader {
                 .transactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .cardLastFour("5555")
                 .createdAt(booking.getCreatedAt())
-                .processedAt(booking.getCreatedAt().plusHours(1))
+                .processedAt(booking.getCreatedAt().plus(Duration.ofHours(1)))
                 .build();
 
         paymentRepository.save(payment);

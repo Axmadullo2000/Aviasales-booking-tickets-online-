@@ -9,14 +9,15 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Service
 public class ReceiptPdfService {
 
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss");
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy");
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy").withZone(ZoneId.systemDefault());
 
     // Uzbekistan Airways brand colors
     private static final Color UZ_AIRWAYS_BLUE = new Color(0, 51, 153);
@@ -140,7 +141,7 @@ public class ReceiptPdfService {
         dateCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         Paragraph dateLabel = new Paragraph("Issue Date", labelFont);
         dateLabel.setAlignment(Element.ALIGN_RIGHT);
-        Paragraph dateValue = new Paragraph(receipt.getCreatedAt().format(DATE_TIME_FORMAT), valueFont);
+        Paragraph dateValue = new Paragraph(DATE_TIME_FORMAT.format(receipt.getCreatedAt()), valueFont);
         dateValue.setAlignment(Element.ALIGN_RIGHT);
         dateCell.addElement(dateLabel);
         dateCell.addElement(dateValue);
@@ -171,7 +172,7 @@ public class ReceiptPdfService {
             addDetailRow(table, "Card Number:", "**** **** **** " + receipt.getCardLastFour(), labelFont, valueFont);
         }
 
-        addDetailRow(table, "Payment Date:", receipt.getPaymentDate().format(DATE_TIME_FORMAT), labelFont, valueFont);
+        addDetailRow(table, "Payment Date:", DATE_TIME_FORMAT.format(receipt.getPaymentDate()), labelFont, valueFont);
         addDetailRow(table, "Passenger:", receipt.getPassengerName(), labelFont, valueFont);
 
         document.add(table);
@@ -220,14 +221,16 @@ public class ReceiptPdfService {
         table.setSpacingBefore(10);
         table.setWidths(new float[]{2, 1});
 
-        // Base Fare
-        addPriceRow(table, "Base Fare:", formatCurrency(receipt.getAmount(), receipt.getCurrency()), labelFont, valueFont);
+        BigDecimal baseFare = receipt.getAmount();
+        BigDecimal tax = baseFare.multiply(BigDecimal.valueOf(0.05)); // 5%
+        BigDecimal total = baseFare.add(tax).add(receipt.getServiceFee() != null ? receipt.getServiceFee() : BigDecimal.ZERO);
 
-        // Taxes
-        addPriceRow(table, "Taxes & Fees:", formatCurrency(receipt.getTaxAmount(), receipt.getCurrency()), labelFont, valueFont);
+        addPriceRow(table, "Base Fare:", formatCurrency(baseFare, receipt.getCurrency()), labelFont, valueFont);
+        addPriceRow(table, "Tax (5%):", formatCurrency(tax, receipt.getCurrency()), labelFont, valueFont);
 
-        // Service Fee
-        addPriceRow(table, "Service Fee:", formatCurrency(receipt.getServiceFee(), receipt.getCurrency()), labelFont, valueFont);
+        if (receipt.getServiceFee() != null && receipt.getServiceFee().compareTo(BigDecimal.ZERO) > 0) {
+            addPriceRow(table, "Service Fee:", formatCurrency(receipt.getServiceFee(), receipt.getCurrency()), labelFont, valueFont);
+        }
 
         // Separator
         PdfPCell separatorCell1 = new PdfPCell();
@@ -247,7 +250,7 @@ public class ReceiptPdfService {
         totalLabelCell.setPaddingTop(10);
         table.addCell(totalLabelCell);
 
-        PdfPCell totalValueCell = new PdfPCell(new Phrase(formatCurrency(receipt.getTotalAmount(), receipt.getCurrency()), totalValueFont));
+        PdfPCell totalValueCell = new PdfPCell(new Phrase(formatCurrency(total, receipt.getCurrency()), totalValueFont));
         totalValueCell.setBorder(Rectangle.NO_BORDER);
         totalValueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         totalValueCell.setPaddingTop(10);
@@ -255,7 +258,7 @@ public class ReceiptPdfService {
 
         document.add(table);
 
-        // Payment Status
+        // Payment Status (как было)
         PdfPTable statusTable = new PdfPTable(1);
         statusTable.setWidthPercentage(100);
         statusTable.setSpacingBefore(20);
@@ -274,6 +277,7 @@ public class ReceiptPdfService {
         statusTable.addCell(statusCell);
         document.add(statusTable);
     }
+
 
     private void addReceiptFooter(Document document, Receipt receipt) throws DocumentException {
         Font footerFont = new Font(Font.HELVETICA, 8, Font.NORMAL, Color.GRAY);

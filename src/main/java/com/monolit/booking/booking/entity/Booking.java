@@ -6,11 +6,8 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @AllArgsConstructor
@@ -40,11 +37,11 @@ public class Booking {
     private BigDecimal totalPrice;
 
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
-    private OffsetDateTime expiresAt;
+    private Instant expiresAt;
 
-    private OffsetDateTime confirmedAt;
+    private Instant confirmedAt;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -65,6 +62,6 @@ public class Booking {
     }
 
     public boolean isExpired() {
-        return expiresAt != null && OffsetDateTime.now().isAfter(expiresAt);
+        return expiresAt != null && Instant.now().isAfter(expiresAt);
     }
 }
