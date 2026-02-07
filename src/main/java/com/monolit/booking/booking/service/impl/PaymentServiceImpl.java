@@ -15,9 +15,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -29,6 +37,13 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final NotificationService notificationService;
     private final ReceiptService receiptService;
+
+    // ═══════════════════════════════════════
+    // REGEX PATTERNS ДЛЯ ВАЛИДАЦИИ
+    // ═══════════════════════════════════════
+
+    private static final Pattern CARD_NUMBER_PATTERN = Pattern.compile("^\\d{13,19}$");
+    private static final Pattern CVV_PATTERN = Pattern.compile("^\\d{3,4}$");
 
     @Override
     @Transactional
@@ -43,9 +58,30 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BookingNotFoundException("Booking not found or access denied");
         }
 
+        // ✅ ШАГ 1: Идемпотентность (если передан ключ)
+        if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+            Optional<Payment> existingPayment = paymentRepository
+                    .findByIdempotencyKey(request.getIdempotencyKey());
+
+            if (existingPayment.isPresent()) {
+                log.info("Idempotent request detected. Returning existing payment: {}",
+                        existingPayment.get().getTransactionId());
+                return paymentMapper.toPaymentResponse(existingPayment.get());
+            }
+        }
+
+        // ✅ ШАГ 2: Проверка существующих платежей
+        validateNoConflictingPayments(booking.getId());
+
+        // ✅ ШАГ 3: Проверка лимита неудачных попыток
+        validatePaymentAttempts(booking.getId());
+
         // Проверяем статус бронирования
-        if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new PaymentProcessingException("Cannot process payment for booking with status: " + booking.getStatus());
+        if (booking.getStatus() != BookingStatus.PENDING &&
+                booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new PaymentProcessingException(
+                    "Cannot process payment for booking with status: " + booking.getStatus()
+            );
         }
 
         // Проверяем срок действия
@@ -54,9 +90,18 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // Проверяем сумму платежа
-        if (!booking.getTotalAmount().equals(request.getAmount())) {
-            throw new PaymentProcessingException("Payment amount does not match booking total");
+        BigDecimal bookingAmount = booking.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal requestAmount = request.getAmount().setScale(2, RoundingMode.HALF_UP);
+
+        if (bookingAmount.compareTo(requestAmount) != 0) {
+            throw new PaymentProcessingException(
+                    String.format("Payment amount ($%.2f) does not match booking total ($%.2f)",
+                            requestAmount, bookingAmount)
+            );
         }
+
+        // Валидация данных карты
+        validateCardDetails(request.getCardNumber(), request.getExpiryDate(), request.getCvv());
 
         // Генерируем ID транзакции
         String transactionId = generateTransactionId();
@@ -72,6 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .status(PaymentStatus.PROCESSING)
                 .transactionId(transactionId)
                 .cardLastFour(cardLastFour)
+                .idempotencyKey(request.getIdempotencyKey())  // ✅ Сохраняем ключ
                 .build();
 
         payment = paymentRepository.save(payment);
@@ -86,14 +132,13 @@ public class PaymentServiceImpl implements PaymentService {
 
             booking.setStatus(BookingStatus.CONFIRMED);
             booking.setConfirmedAt(LocalDateTime.now());
-
-            // ✅ ИСПРАВЛЕНО: устанавливаем expires_at в далёкое будущее вместо null
-            // Подтверждённые бронирования не истекают, поэтому ставим +100 лет
+            booking.setPaymentStatus(PaymentStatus.PAID);
+            booking.setPaymentMethod(request.getPaymentMethod());
+            booking.setPaidAmount(request.getAmount());
             booking.setExpiresAt(LocalDateTime.now().plusYears(100));
 
             bookingRepository.save(booking);
 
-            // Создаём чек после успешной оплаты
             payment = paymentRepository.save(payment);
             receiptService.createReceipt(payment, booking);
 
@@ -112,13 +157,108 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentMapper.toPaymentResponse(payment);
     }
 
+    // ═══════════════════════════════════════
+    // ВАЛИДАЦИЯ ПЛАТЕЖЕЙ
+    // ═══════════════════════════════════════
+
+    /**
+     * ✅ Проверяет что нет конфликтующих платежей
+     */
+    private void validateNoConflictingPayments(Long bookingId) {
+        // 1. Проверяем COMPLETED платежи
+        Optional<Payment> completedPayment = paymentRepository
+                .findFirstByBookingIdAndStatus(bookingId, PaymentStatus.COMPLETED);
+
+        if (completedPayment.isPresent()) {
+            log.warn("Booking {} already has completed payment: {}",
+                    bookingId, completedPayment.get().getTransactionId());
+            throw new PaymentProcessingException(
+                    "This booking has already been paid. Transaction ID: " +
+                            completedPayment.get().getTransactionId()
+            );
+        }
+
+        // 2. Проверяем PROCESSING платежи
+        Optional<Payment> processingPayment = paymentRepository
+                .findFirstByBookingIdAndStatus(bookingId, PaymentStatus.PROCESSING);
+
+        if (processingPayment.isPresent()) {
+            // Проверяем не застрял ли платёж (> 5 минут в PROCESSING)
+            Instant createdAt = processingPayment.get().getCreatedAt();
+            Instant fiveMinutesAgo = Instant.now().minus(5, ChronoUnit.MINUTES);
+
+            if (createdAt.isBefore(fiveMinutesAgo)) {
+                // Платёж застрял - помечаем как FAILED
+                log.warn("Processing payment {} is stuck (> 5 min). Marking as FAILED",
+                        processingPayment.get().getTransactionId());
+
+                Payment stuck = processingPayment.get();
+                stuck.setStatus(PaymentStatus.FAILED);
+                stuck.setFailureReason("Payment timeout - processing took too long");
+                stuck.setProcessedAt(Instant.now());
+                paymentRepository.save(stuck);
+
+                // Разрешаем создать новый платёж
+                return;
+            }
+
+            log.warn("Booking {} already has payment in progress: {}",
+                    bookingId, processingPayment.get().getTransactionId());
+            throw new PaymentProcessingException(
+                    "Payment is already being processed. Please wait or try again in a few minutes."
+            );
+        }
+    }
+
+    /**
+     * ✅ Проверяет лимит неудачных попыток оплаты (защита от спама)
+     */
+    private void validatePaymentAttempts(Long bookingId) {
+        long MAX_FAILED_ATTEMPTS = 8;
+        long COOLDOWN_MINUTES = 25;
+
+        List<Payment> allPayments = paymentRepository
+                .findByBookingIdOrderByCreatedAtDesc(bookingId);
+
+        // Считаем неудачные попытки
+        long failedCount = allPayments.stream()
+                .filter(p -> p.getStatus() == PaymentStatus.FAILED)
+                .count();
+
+        if (failedCount >= MAX_FAILED_ATTEMPTS) {
+            // Проверяем последнюю неудачную попытку
+            Optional<Payment> lastFailedPayment = allPayments.stream()
+                    .filter(p -> p.getStatus() == PaymentStatus.FAILED)
+                    .findFirst();
+
+            if (lastFailedPayment.isPresent()) {
+                Instant lastAttempt = lastFailedPayment.get().getCreatedAt();
+                Instant cooldownExpiry = lastAttempt.plus(COOLDOWN_MINUTES, ChronoUnit.MINUTES);
+
+                if (Instant.now().isBefore(cooldownExpiry)) {
+                    log.warn("Booking {} has {} failed attempts. Still in cooldown period",
+                            bookingId, failedCount);
+                    throw new PaymentProcessingException(
+                            String.format("Too many failed payment attempts (%d). " +
+                                            "Please try again after %d minutes or contact support.",
+                                    failedCount, COOLDOWN_MINUTES)
+                    );
+                } else {
+                    log.info("Booking {} cooldown period expired. Allowing new attempt", bookingId);
+                }
+            }
+        }
+    }
+
     @Override
     @Transactional
     public PaymentResponse confirmPayment(ConfirmPaymentRequest request, Long userId) {
         log.info("Confirming payment with transaction ID: {}", request.getTransactionId());
 
         Payment payment = paymentRepository.findByTransactionId(request.getTransactionId())
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found with transaction ID: " + request.getTransactionId()));
+                .orElseThrow(() -> new PaymentNotFoundException(
+                        "Payment not found with transaction ID: " + request.getTransactionId()
+                ));
 
         Booking booking = bookingRepository.findById(payment.getBookingId())
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found"));
@@ -140,8 +280,8 @@ public class PaymentServiceImpl implements PaymentService {
         // Подтверждаем бронирование
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setConfirmedAt(LocalDateTime.now());
-
-        // ✅ ИСПРАВЛЕНО: устанавливаем expires_at в далёкое будущее вместо null
+        booking.setPaymentStatus(PaymentStatus.PAID);
+        booking.setPaidAmount(payment.getAmount());
         booking.setExpiresAt(LocalDateTime.now().plusYears(100));
 
         bookingRepository.save(booking);
@@ -162,7 +302,9 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Getting payment status for transaction: {}", transactionId);
 
         Payment payment = paymentRepository.findByTransactionId(transactionId)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found with transaction ID: " + transactionId));
+                .orElseThrow(() -> new PaymentNotFoundException(
+                        "Payment not found with transaction ID: " + transactionId
+                ));
 
         return paymentMapper.toPaymentStatusResponse(payment);
     }
@@ -173,7 +315,9 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Getting payment for booking: {}", bookingReference);
 
         Payment payment = paymentRepository.findByBookingReference(bookingReference)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found for booking: " + bookingReference));
+                .orElseThrow(() -> new PaymentNotFoundException(
+                        "Payment not found for booking: " + bookingReference
+                ));
 
         return paymentMapper.toPaymentResponse(payment);
     }
@@ -205,12 +349,159 @@ public class PaymentServiceImpl implements PaymentService {
 
         // Отменяем бронирование
         booking.setStatus(BookingStatus.CANCELLED);
+        booking.setPaymentStatus(PaymentStatus.REFUNDED);
         bookingRepository.save(booking);
 
         payment = paymentRepository.save(payment);
         log.info("Payment refunded: {}", paymentId);
 
         return paymentMapper.toPaymentResponse(payment);
+    }
+
+    // ═══════════════════════════════════════
+    // ВАЛИДАЦИЯ ДАННЫХ КАРТЫ
+    // ═══════════════════════════════════════
+
+    /**
+     * ✅ Валидирует номер карты, срок действия и CVV
+     * Поддерживает: UZCARD, HUMO, Visa, MasterCard, Maestro, МИР, AmEx, UnionPay
+     */
+    private void validateCardDetails(String cardNumber, String expiryDate, String cvv) {
+        log.debug("Validating card details");
+
+        // Валидация номера карты
+        if (cardNumber == null || cardNumber.trim().isEmpty()) {
+            throw new PaymentProcessingException("Card number is required");
+        }
+
+        String cleanCardNumber = cardNumber.replaceAll("\\s+", "");
+
+        if (!CARD_NUMBER_PATTERN.matcher(cleanCardNumber).matches()) {
+            throw new PaymentProcessingException(
+                    "Invalid card number format. Must be 13-19 digits"
+            );
+        }
+
+        // ✅ Определяем тип карты
+        CardType cardType = CardType.detectCardType(cleanCardNumber);
+
+        if (cardType == CardType.UNKNOWN) {
+            throw new PaymentProcessingException("Unsupported card type");
+        }
+
+        log.debug("Detected card type: {}", cardType.getDisplayName());
+
+        // ✅ Луна только для Visa/MasterCard/Maestro/AmEx
+        // UZCARD и HUMO имеют свою систему валидации
+        if (cardType.requiresLuhnValidation() && !isValidLuhn(cleanCardNumber)) {
+            throw new PaymentProcessingException(
+                    "Invalid " + cardType.getDisplayName() + " card number"
+            );
+        }
+
+        // Валидация длины номера карты для конкретного типа
+        if (cleanCardNumber.length() < cardType.getMinLength() ||
+                cleanCardNumber.length() > cardType.getMaxLength()) {
+            throw new PaymentProcessingException(
+                    String.format("%s card must be %d digits",
+                            cardType.getDisplayName(),
+                            cardType.getMinLength())
+            );
+        }
+
+        // Валидация срока действия
+        if (expiryDate == null || expiryDate.trim().isEmpty()) {
+            throw new PaymentProcessingException("Expiry date is required");
+        }
+
+        if (!isValidExpiryDate(expiryDate)) {
+            throw new PaymentProcessingException(
+                    "Invalid or expired card. Format: MM/YY"
+            );
+        }
+
+        // ✅ Валидация CVV с учётом типа карты
+        if (cvv == null || cvv.trim().isEmpty()) {
+            throw new PaymentProcessingException("CVV is required");
+        }
+
+        int expectedCvvLength = cardType.getExpectedCvvLength();
+        if (cvv.length() != expectedCvvLength) {
+            throw new PaymentProcessingException(
+                    String.format("CVV for %s must be %d digits",
+                            cardType.getDisplayName(),
+                            expectedCvvLength)
+            );
+        }
+
+        if (!CVV_PATTERN.matcher(cvv).matches()) {
+            throw new PaymentProcessingException(
+                    "Invalid CVV format. Must contain only digits"
+            );
+        }
+
+        log.info("Card validation successful: {} ending in {}",
+                cardType.getDisplayName(),
+                cleanCardNumber.substring(cleanCardNumber.length() - 4));
+    }
+
+    /**
+     * Проверка номера карты по алгоритму Луна
+     * Применяется только для Visa, MasterCard, Maestro, AmEx
+     */
+    private boolean isValidLuhn(String cardNumber) {
+        int sum = 0;
+        boolean alternate = false;
+
+        for (int i = cardNumber.length() - 1; i >= 0; i--) {
+            int digit = Character.getNumericValue(cardNumber.charAt(i));
+
+            if (alternate) {
+                digit *= 2;
+                if (digit > 9) {
+                    digit = (digit % 10) + 1;
+                }
+            }
+
+            sum += digit;
+            alternate = !alternate;
+        }
+
+        return (sum % 10 == 0);
+    }
+
+    /**
+     * Проверка срока действия карты (MM/YY или MM/YYYY)
+     */
+    private boolean isValidExpiryDate(String expiryDate) {
+        try {
+            String cleanExpiry = expiryDate.trim();
+
+            // Проверяем формат MM/YY или MM/YYYY
+            if (!cleanExpiry.matches("^(0[1-9]|1[0-2])/\\d{2,4}$")) {
+                return false;
+            }
+
+            // Парсим дату
+            String[] parts = cleanExpiry.split("/");
+            int month = Integer.parseInt(parts[0]);
+            int year = Integer.parseInt(parts[1]);
+
+            // Если год 2-х значный, добавляем 2000
+            if (year < 100) {
+                year += 2000;
+            }
+
+            YearMonth cardExpiry = YearMonth.of(year, month);
+            YearMonth currentMonth = YearMonth.now();
+
+            // Карта действительна если срок >= текущий месяц
+            return cardExpiry.compareTo(currentMonth) >= 0;
+
+        } catch (DateTimeParseException | NumberFormatException e) {
+            log.warn("Failed to parse expiry date: {}", expiryDate, e);
+            return false;
+        }
     }
 
     // ═══════════════════════════════════════
@@ -225,12 +516,15 @@ public class PaymentServiceImpl implements PaymentService {
         if (cardNumber == null || cardNumber.length() < 4) {
             return "****";
         }
-        return cardNumber.substring(cardNumber.length() - 4);
+        String cleanNumber = cardNumber.replaceAll("\\s+", "");
+        return cleanNumber.substring(cleanNumber.length() - 4);
     }
 
     /**
      * Mock обработка платежа
-     * В продакшене здесь будет интеграция с платёжным шлюзом
+     * В продакшене здесь будет интеграция с платёжным шлюзом:
+     * - Для UZCARD/HUMO: интеграция с Payme, Click, Uzum
+     * - Для Visa/MasterCard: Stripe, PayPal, Square
      */
     private boolean processPaymentMock(CreatePaymentRequest request) {
         log.info("Processing payment (MOCK) for method: {}", request.getPaymentMethod());
@@ -242,7 +536,12 @@ public class PaymentServiceImpl implements PaymentService {
             Thread.currentThread().interrupt();
         }
 
-        // Карты заканчивающиеся на 0000 будут отклонены
-        return request.getCardNumber() == null || !request.getCardNumber().endsWith("0000");
+        // Карты заканчивающиеся на 0000 будут отклонены (для тестирования)
+        if (request.getCardNumber() != null && request.getCardNumber().endsWith("0000")) {
+            log.warn("Card ending with 0000 - payment declined");
+            return false;
+        }
+
+        return true;
     }
 }

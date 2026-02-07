@@ -57,6 +57,7 @@ public class TicketPdfService {
                 if (!isFirst) {
                     document.newPage();
                 }
+
                 generateBoardingPass(document, writer, ticket, booking);
                 isFirst = false;
             }
@@ -145,6 +146,7 @@ public class TicketPdfService {
                 ticket.getCabinClass().toString().charAt(0), // Y/B/F
                 departure.format(DATE_FLIGHT_FORMAT).toUpperCase()
         );
+
         Font flightFont = new Font(Font.HELVETICA, 11, Font.NORMAL, Color.BLACK);
         Paragraph flightDetails = new Paragraph(flightInfo, flightFont);
         flightDetails.setSpacingAfter(20);
@@ -178,25 +180,7 @@ public class TicketPdfService {
         leftCell.addElement(seat);
 
         // Пожелания (как на реальном билете)
-        Font wishFont = new Font(Font.HELVETICA, 9, Font.BOLD, UZ_BLUE);
-        PdfPTable wishTable = new PdfPTable(3);
-        wishTable.setWidthPercentage(100);
-
-        PdfPCell wish1 = new PdfPCell(new Phrase("KAYTLI PARVOZ", wishFont));
-        wish1.setBorder(Rectangle.NO_BORDER);
-        wish1.setHorizontalAlignment(Element.ALIGN_LEFT);
-
-        PdfPCell wish2 = new PdfPCell(new Phrase("HAVE A GOOD FLIGHT!", wishFont));
-        wish2.setBorder(Rectangle.NO_BORDER);
-        wish2.setHorizontalAlignment(Element.ALIGN_CENTER);
-
-        PdfPCell wish3 = new PdfPCell(new Phrase("СЧАСТЛИВОГО ПОЛЁТА!", wishFont));
-        wish3.setBorder(Rectangle.NO_BORDER);
-        wish3.setHorizontalAlignment(Element.ALIGN_RIGHT);
-
-        wishTable.addCell(wish1);
-        wishTable.addCell(wish2);
-        wishTable.addCell(wish3);
+        PdfPTable wishTable = getPdfPTable();
 
         leftCell.addElement(wishTable);
 
@@ -206,23 +190,7 @@ public class TicketPdfService {
         // ПРАВАЯ ЧАСТЬ (дублирование информации)
         // ═══════════════════════════════════════
 
-        PdfPCell rightCell = new PdfPCell();
-        rightCell.setBorder(Rectangle.NO_BORDER);
-        rightCell.setPadding(10);
-        rightCell.setVerticalAlignment(Element.ALIGN_TOP);
-
-        // Маленький логотип сверху справа
-        Font smallLogoFont = new Font(Font.HELVETICA, 10, Font.BOLD, UZ_BLUE);
-        Paragraph smallLogo = new Paragraph("UZBEKISTAN", smallLogoFont);
-        smallLogo.setAlignment(Element.ALIGN_RIGHT);
-        smallLogo.setSpacingAfter(2);
-        rightCell.addElement(smallLogo);
-
-        Font smallAirwaysFont = new Font(Font.HELVETICA, 8, Font.NORMAL, UZ_BLUE);
-        Paragraph smallAirways = new Paragraph("airways", smallAirwaysFont);
-        smallAirways.setAlignment(Element.ALIGN_RIGHT);
-        smallAirways.setSpacingAfter(10);
-        rightCell.addElement(smallAirways);
+        PdfPCell rightCell = getPdfPCell();
 
         // Информация справа
         Font rightFont = new Font(Font.HELVETICA, 8, Font.NORMAL, Color.BLACK);
@@ -242,6 +210,50 @@ public class TicketPdfService {
         mainTable.addCell(rightCell);
 
         document.add(mainTable);
+    }
+
+    private static PdfPCell getPdfPCell() {
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.NO_BORDER);
+        rightCell.setPadding(10);
+        rightCell.setVerticalAlignment(Element.ALIGN_TOP);
+
+        // Маленький логотип сверху справа
+        Font smallLogoFont = new Font(Font.HELVETICA, 10, Font.BOLD, UZ_BLUE);
+        Paragraph smallLogo = new Paragraph("UZBEKISTAN", smallLogoFont);
+        smallLogo.setAlignment(Element.ALIGN_RIGHT);
+        smallLogo.setSpacingAfter(2);
+        rightCell.addElement(smallLogo);
+
+        Font smallAirwaysFont = new Font(Font.HELVETICA, 8, Font.NORMAL, UZ_BLUE);
+        Paragraph smallAirways = new Paragraph("airways", smallAirwaysFont);
+        smallAirways.setAlignment(Element.ALIGN_RIGHT);
+        smallAirways.setSpacingAfter(10);
+        rightCell.addElement(smallAirways);
+        return rightCell;
+    }
+
+    private static PdfPTable getPdfPTable() {
+        Font wishFont = new Font(Font.HELVETICA, 9, Font.BOLD, UZ_BLUE);
+        PdfPTable wishTable = new PdfPTable(3);
+        wishTable.setWidthPercentage(100);
+
+        PdfPCell wish1 = new PdfPCell(new Phrase("HAYRLI PARVOZ", wishFont));
+        wish1.setBorder(Rectangle.NO_BORDER);
+        wish1.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+        PdfPCell wish2 = new PdfPCell(new Phrase("HAVE A GOOD FLIGHT!", wishFont));
+        wish2.setBorder(Rectangle.NO_BORDER);
+        wish2.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+        PdfPCell wish3 = new PdfPCell(new Phrase("СЧАСТЛИВОГО ПОЛЁТА!", wishFont));
+        wish3.setBorder(Rectangle.NO_BORDER);
+        wish3.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        wishTable.addCell(wish1);
+        wishTable.addCell(wish2);
+        wishTable.addCell(wish3);
+        return wishTable;
     }
 
     /**

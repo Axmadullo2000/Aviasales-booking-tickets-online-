@@ -2,6 +2,7 @@ package com.monolit.booking.booking.repo;
 
 import com.monolit.booking.booking.entity.Payment;
 import com.monolit.booking.booking.enums.PaymentStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -20,4 +21,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByStatus(PaymentStatus status);
 
     Optional<Payment> findByBookingReferenceAndStatus(String bookingReference, PaymentStatus status);
+
+    Optional<Payment> findFirstByBookingIdAndStatus(Long bookingId, PaymentStatus status);
+
+    List<Payment> findByBookingIdOrderByCreatedAtDesc(Long bookingId);
+
+    Optional<Payment> findByIdempotencyKey(String idempotencyKey);
 }

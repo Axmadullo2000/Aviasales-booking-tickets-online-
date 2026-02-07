@@ -4,6 +4,7 @@ import com.monolit.booking.booking.enums.PaymentMethod;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import javax.annotation.Nullable;
 import java.math.BigDecimal;
 
 @Data
@@ -30,4 +31,6 @@ public class CreatePaymentRequest {
     private String expiryDate;
 
     private String cvv;
+
+    private String idempotencyKey;
 }

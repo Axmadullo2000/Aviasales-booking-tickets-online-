@@ -428,20 +428,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private Passenger createOrGetPassenger(PassengerInfoRequest request, Users user) {
-        // Если пассажир уже сохранён у этого пользователя - используем его
-        if (request.getSavedPassengerId() != null) {
-            Passenger savedPassenger = passengerRepository.findById(request.getSavedPassengerId())
-                    .filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Saved passenger not found: " + request.getSavedPassengerId()
-                    ));
-
-            log.debug("Using saved passenger: {} {}",
-                    savedPassenger.getFirstName(), savedPassenger.getLastName());
-
-            return savedPassenger;
-        }
-
         // Создаём нового пассажира
         Passenger passenger = bookingMapper.toPassenger(request);
 

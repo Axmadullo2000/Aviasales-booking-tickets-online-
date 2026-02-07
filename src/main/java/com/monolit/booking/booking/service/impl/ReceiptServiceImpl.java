@@ -143,7 +143,7 @@ public class ReceiptServiceImpl implements ReceiptService {
                 count++;
             }
         }
-        return sb.length() > 0 ? sb.toString() : "N/A";
+        return !sb.isEmpty() ? sb.toString() : "N/A";
     }
 
     private String buildFlightDetails(Booking booking) {

@@ -53,4 +53,5 @@ public class Payment {
     private Instant processedAt;
 
     private String failureReason;
+    private String idempotencyKey;
 }
