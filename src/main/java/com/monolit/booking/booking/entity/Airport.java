@@ -2,41 +2,59 @@ package com.monolit.booking.booking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
 
-@AllArgsConstructor
-@NoArgsConstructor
+@Entity
+@Table(name = "airports", indexes = {
+        @Index(name = "idx_iata_code", columnList = "iataCode", unique = true),
+        @Index(name = "idx_city_country", columnList = "city, country")
+})
 @Getter
 @Setter
 @Builder
-@Entity
-@Table(name = "airports")
-public class Airport implements Serializable {
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+public class Airport {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false, length = 3)
-    private String iataCode;
+    private String iataCode;  // DME, JFK, DXB
+
+    @Column(unique = true, length = 4)
+    private String icaoCode;  // UUDD, KJFK
 
     @Column(nullable = false)
-    private String name;
+    private String name;  // Домодедово
 
     @Column(nullable = false)
-    private String city;
+    private String city;  // ✅ Москва
 
     @Column(nullable = false)
-    private String country;
+    private String country;  // ✅ Россия
 
-    private String timezone;
+    @Column(precision = 10, scale = 7)
+    private BigDecimal latitude;
 
-    private Double latitude;
+    @Column(precision = 10, scale = 7)
+    private BigDecimal longitude;
 
-    private Double longitude;
+    @Column(nullable = false)
+    private String timezone;  // Europe/Moscow
 
-    @Builder.Default
-    private Boolean isActive = true;
+    private Boolean isActive;  // ✅ должно быть isActive
 
+    @Column(columnDefinition = "TEXT")
+    private String searchTokens;
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 }

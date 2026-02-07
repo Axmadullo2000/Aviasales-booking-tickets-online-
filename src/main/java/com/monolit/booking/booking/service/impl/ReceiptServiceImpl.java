@@ -5,7 +5,6 @@ import com.monolit.booking.booking.entity.*;
 import com.monolit.booking.booking.exception.BookingNotFoundException;
 import com.monolit.booking.booking.exception.PaymentNotFoundException;
 import com.monolit.booking.booking.repo.BookingRepository;
-import com.monolit.booking.booking.repo.FlightRepository;
 import com.monolit.booking.booking.repo.ReceiptRepository;
 import com.monolit.booking.booking.service.interfaces.ReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class ReceiptServiceImpl implements ReceiptService {
 
     private final ReceiptRepository receiptRepository;
     private final BookingRepository bookingRepository;
-    private final FlightRepository flightRepository;
     private final ReceiptPdfService receiptPdfService;
 
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm").withZone(ZoneId.systemDefault());
@@ -55,7 +53,7 @@ public class ReceiptServiceImpl implements ReceiptService {
                 .paymentId(payment.getId())
                 .transactionId(payment.getTransactionId())
                 .bookingReference(booking.getBookingReference())
-                .userId(booking.getUserId())
+                .userId(booking.getUser().getId())  // ✅ Исправлено
                 .amount(baseAmount)
                 .taxAmount(taxAmount)
                 .serviceFee(serviceFee)
@@ -82,7 +80,8 @@ public class ReceiptServiceImpl implements ReceiptService {
         Booking booking = bookingRepository.findByBookingReference(bookingReference)
                 .orElseThrow(() -> new BookingNotFoundException(bookingReference, true));
 
-        if (!booking.getUserId().equals(userId)) {
+        // ✅ Проверяем через booking.getUser().getId()
+        if (!booking.getUser().getId().equals(userId)) {
             throw new BookingNotFoundException("Booking not found or access denied");
         }
 
@@ -111,7 +110,8 @@ public class ReceiptServiceImpl implements ReceiptService {
         Booking booking = bookingRepository.findByBookingReference(bookingReference)
                 .orElseThrow(() -> new BookingNotFoundException(bookingReference, true));
 
-        if (!booking.getUserId().equals(userId)) {
+        // ✅ Проверяем через booking.getUser().getId()
+        if (!booking.getUser().getId().equals(userId)) {
             throw new BookingNotFoundException("Booking not found or access denied");
         }
 
@@ -127,41 +127,48 @@ public class ReceiptServiceImpl implements ReceiptService {
     }
 
     private String buildPassengerNames(Booking booking) {
-        if (booking.getPassengers() == null || booking.getPassengers().isEmpty()) {
+        // ✅ Используем tickets вместо passengers
+        if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
             return "N/A";
         }
 
         StringBuilder sb = new StringBuilder();
         int count = 0;
-        for (Passenger passenger : booking.getPassengers()) {
-            if (count > 0) sb.append(", ");
-            sb.append(passenger.getFirstName()).append(" ").append(passenger.getLastName());
-            count++;
+        for (Ticket ticket : booking.getTickets()) {
+            if (ticket.getPassenger() != null) {
+                if (count > 0) sb.append(", ");
+                sb.append(ticket.getPassenger().getFirstName())
+                        .append(" ")
+                        .append(ticket.getPassenger().getLastName());
+                count++;
+            }
         }
-        return sb.toString();
+        return sb.length() > 0 ? sb.toString() : "N/A";
     }
 
     private String buildFlightDetails(Booking booking) {
-        if (booking.getBookingFlights() == null || booking.getBookingFlights().isEmpty()) {
+        // ✅ Используем tickets вместо bookingFlights
+        if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
             return "N/A";
         }
 
         StringBuilder sb = new StringBuilder();
-        for (BookingFlight bookingFlight : booking.getBookingFlights()) {
-            Flight flight = flightRepository.findById(bookingFlight.getFlightId()).orElse(null);
+        for (Ticket ticket : booking.getTickets()) {
+            Flight flight = ticket.getFlight();
             if (flight != null) {
                 sb.append("Flight: ").append(flight.getFlightNumber());
                 sb.append(" | ").append(flight.getAirline().getName());
                 sb.append("\n");
-                sb.append("Route: ").append(flight.getDepartureAirport().getCity());
-                sb.append(" (").append(flight.getDepartureAirport().getIataCode()).append(")");
-                sb.append(" → ").append(flight.getArrivalAirport().getCity());
-                sb.append(" (").append(flight.getArrivalAirport().getIataCode()).append(")");
+                // ✅ Используем origin и destination вместо departureAirport и arrivalAirport
+                sb.append("Route: ").append(flight.getOrigin().getCity());
+                sb.append(" (").append(flight.getOrigin().getIataCode()).append(")");
+                sb.append(" → ").append(flight.getDestination().getCity());
+                sb.append(" (").append(flight.getDestination().getIataCode()).append(")");
                 sb.append("\n");
+                // ✅ getDepartureTime() возвращает Instant, форматируем его
                 sb.append("Departure: ").append(DATE_TIME_FORMAT.format(flight.getDepartureTime()));
                 sb.append("\n");
-                sb.append("Class: ").append(bookingFlight.getSeatClass().name());
-                sb.append(" | Passengers: ").append(bookingFlight.getPassengerCount());
+                sb.append(" | Seat: ").append(ticket.getSeatNumber());
                 sb.append("\n");
             }
         }

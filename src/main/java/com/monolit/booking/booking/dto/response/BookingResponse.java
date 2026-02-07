@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -19,6 +20,6 @@ public class BookingResponse {
     private String bookingReference;
     private BookingStatus status;
     private BigDecimal totalPrice;
-    private Instant createdAt;
-    private Instant expiresAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
 }

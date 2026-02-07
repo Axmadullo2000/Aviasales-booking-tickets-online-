@@ -1,7 +1,7 @@
 package com.monolit.booking.booking.dto.request;
 
+import com.monolit.booking.booking.enums.CabinClass;
 import com.monolit.booking.booking.enums.FlightSortBy;
-import com.monolit.booking.booking.enums.SeatClass;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -13,23 +13,24 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class FlightSearchRequest {
 
-    @NotBlank(message = "Departure airport is required")
+    @NotBlank(message = "Origin airport code is required")
     @Size(min = 3, max = 3, message = "Airport code must be 3 characters")
-    private String departureAirport;
+    private String originCode;  // DME
 
-    @NotBlank(message = "Arrival airport is required")
+    @NotBlank(message = "Destination airport code is required")
     @Size(min = 3, max = 3, message = "Airport code must be 3 characters")
-    private String arrivalAirport;
+    private String destinationCode;  // DXB
 
     @NotNull(message = "Departure date is required")
-    @FutureOrPresent(message = "Departure date must be today or in the future")
+    @FutureOrPresent(message = "Departure date must be in the future or today")
     private LocalDate departureDate;
 
-    @Min(value = 1, message = "At least 1 passenger is required")
+    @NotNull(message = "Number of passengers is required")
+    @Min(value = 1, message = "At least 1 passenger required")
     @Max(value = 9, message = "Maximum 9 passengers allowed")
-    private Integer passengers = 1;
+    private Integer passengers;
 
-    private SeatClass seatClass = SeatClass.ECONOMY;
+    private CabinClass cabinClass;  // default ECONOMY
 
-    private FlightSortBy sortBy = FlightSortBy.PRICE;
+    private FlightSortBy sortBy;    // default PRICE
 }

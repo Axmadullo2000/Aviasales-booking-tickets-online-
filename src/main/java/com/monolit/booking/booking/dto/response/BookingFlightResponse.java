@@ -1,6 +1,5 @@
 package com.monolit.booking.booking.dto.response;
 
-import com.monolit.booking.booking.enums.SeatClass;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -11,10 +10,11 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class BookingFlightResponse {
 
-    private Long id;
-    private FlightDetailResponse flight;
-    private Integer passengerCount;
-    private SeatClass seatClass;
-    private BigDecimal pricePerSeat;
-    private BigDecimal totalPrice;
+    private FlightResponse flight;  // информация о рейсе
+
+    // ✅ Данные из Ticket
+    private String seatNumber;      // место пассажира
+    private BigDecimal price;       // цена билета
+    private String ticketNumber;    // номер билета
+    private String cabinClass;      // класс обслуживания
 }

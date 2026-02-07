@@ -1,6 +1,5 @@
 package com.monolit.booking.booking.dto.request;
 
-import com.monolit.booking.booking.enums.FlightStatus;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -13,38 +12,44 @@ import java.time.Instant;
 @AllArgsConstructor
 public class CreateFlightRequest {
 
-    @NotBlank(message = "Flight number is required")
-    private String flightNumber;
+    @NotBlank
+    @Size(max = 10)
+    private String flightNumber;  // SU1234
 
-    @NotBlank(message = "Airline IATA code is required")
-    @Size(min = 2, max = 2, message = "Airline code must be 2 characters")
-    private String airlineCode;
+    @NotBlank
+    @Size(min = 2, max = 2)
+    private String airlineCode;  // SU
 
-    @NotBlank(message = "Departure airport is required")
-    @Size(min = 3, max = 3, message = "Airport code must be 3 characters")
-    private String departureAirportCode;
+    @NotBlank
+    @Size(min = 3, max = 3)
+    private String originCode;  // DME
 
-    @NotBlank(message = "Arrival airport is required")
-    @Size(min = 3, max = 3, message = "Airport code must be 3 characters")
-    private String arrivalAirportCode;
+    @NotBlank
+    @Size(min = 3, max = 3)
+    private String destinationCode;  // DXB
 
-    @NotNull(message = "Departure time is required")
-    @Future(message = "Departure time must be in the future")
+    @NotNull
+    @Future
     private Instant departureTime;
 
-    @NotNull(message = "Arrival time is required")
-    @Future(message = "Arrival time must be in the future")
+    @NotNull
+    @Future
     private Instant arrivalTime;
 
-    @NotNull(message = "Total seats is required")
-    @Min(value = 1, message = "Total seats must be at least 1")
+    @NotNull
+    @Min(1)
     private Integer totalSeats;
 
-    @NotNull(message = "Economy price is required")
-    @DecimalMin(value = "0.01", message = "Economy price must be greater than 0")
-    private BigDecimal priceEconomy;
+    private Integer economySeats;
+    private Integer businessSeats;
+    private Integer firstClassSeats;
 
-    @NotNull(message = "Business price is required")
-    @DecimalMin(value = "0.01", message = "Business price must be greater than 0")
-    private BigDecimal priceBusiness;
+    @NotNull
+    @DecimalMin("0.01")
+    private BigDecimal basePrice;
+
+    private BigDecimal businessPrice;
+    private BigDecimal firstClassPrice;
+
+    private String aircraftType;  // Boeing 777-300ER
 }

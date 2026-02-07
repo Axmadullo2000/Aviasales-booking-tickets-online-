@@ -2,34 +2,52 @@ package com.monolit.booking.booking.mapper;
 
 import com.monolit.booking.booking.dto.response.*;
 import com.monolit.booking.booking.entity.*;
-import com.monolit.booking.booking.enums.SeatClass;
 import org.mapstruct.*;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface FlightMapper {
 
+    @Mapping(target = "economyPrice", source = "basePrice")
+    @Mapping(target = "departureTimeUtc", source = "departureTime")
+    @Mapping(target = "arrivalTimeUtc", source = "arrivalTime")
+    @Mapping(target = "departureTime", expression = "java(flight.getDepartureTimeLocal())")
+    @Mapping(target = "arrivalTime", expression = "java(flight.getArrivalTimeLocal())")
+    FlightResponse toFlightResponse(Flight flight);
+
+    List<FlightResponse> toFlightResponseList(List<Flight> flights);
+
+    @Mapping(target = "flight", source = ".")
+    @Mapping(target = "seatAvailability", expression = "java(mapSeatAvailability(flight))")
+    @Mapping(target = "connectionAirport", source = "connectionAirport")
+    FlightDetailResponse toFlightDetailResponse(Flight flight);
+
     AirportResponse toAirportResponse(Airport airport);
+
+    List<AirportResponse> toAirportResponseList(List<Airport> airports);
 
     AirlineResponse toAirlineResponse(Airline airline);
 
-    @Mapping(target = "price", ignore = true)
-    FlightSearchResponse toFlightSearchResponse(Flight flight);
+    List<AirlineResponse> toAirlineResponseList(List<Airline> airlines);
 
-    default FlightSearchResponse toFlightSearchResponse(Flight flight, SeatClass seatClass) {
-        FlightSearchResponse response = toFlightSearchResponse(flight);
-        BigDecimal price = seatClass == SeatClass.BUSINESS ? flight.getPriceBusiness() : flight.getPriceEconomy();
-        response.setPrice(price);
-        return response;
-    }
+    default SeatAvailability mapSeatAvailability(Flight flight) {
+        if (flight.getEconomySeats() == null || flight.getBusinessSeats() == null) {
+            return null;
+        }
 
-    FlightDetailResponse toFlightDetailResponse(Flight flight);
+        int totalOccupied = flight.getTotalSeats() - flight.getAvailableSeats();
 
-    default PopularDestinationResponse toPopularDestinationResponse(Airport airport, Long flightCount) {
-        return PopularDestinationResponse.builder()
-                .airport(toAirportResponse(airport))
-                .flightCount(flightCount)
+        int economyOccupied = totalOccupied * flight.getEconomySeats() / flight.getTotalSeats();
+        int businessOccupied = totalOccupied * flight.getBusinessSeats() / flight.getTotalSeats();
+        int firstClassOccupied = totalOccupied - economyOccupied - businessOccupied;
+
+        return SeatAvailability.builder()
+                .economyAvailable(Math.max(0, flight.getEconomySeats() - economyOccupied))
+                .businessAvailable(Math.max(0, flight.getBusinessSeats() - businessOccupied))
+                .firstClassAvailable(Math.max(0,
+                        (flight.getFirstClassSeats() != null ? flight.getFirstClassSeats() : 0) - firstClassOccupied
+                ))
                 .build();
     }
 }

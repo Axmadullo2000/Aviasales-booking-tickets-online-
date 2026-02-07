@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
@@ -37,25 +38,31 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findByBookingReference(request.getBookingReference())
                 .orElseThrow(() -> new BookingNotFoundException(request.getBookingReference(), true));
 
-        if (!booking.getUserId().equals(userId)) {
+        // Проверяем доступ
+        if (!booking.getUser().getId().equals(userId)) {
             throw new BookingNotFoundException("Booking not found or access denied");
         }
 
+        // Проверяем статус бронирования
         if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new PaymentProcessingException("Cannot process payment for booking with status: " + booking.getStatus());
         }
 
+        // Проверяем срок действия
         if (booking.isExpired()) {
             throw new BookingExpiredException(request.getBookingReference());
         }
 
-        if (!booking.getTotalPrice().equals(request.getAmount())) {
+        // Проверяем сумму платежа
+        if (!booking.getTotalAmount().equals(request.getAmount())) {
             throw new PaymentProcessingException("Payment amount does not match booking total");
         }
 
+        // Генерируем ID транзакции
         String transactionId = generateTransactionId();
         String cardLastFour = extractCardLastFour(request.getCardNumber());
 
+        // Создаём платёж
         Payment payment = Payment.builder()
                 .bookingId(booking.getId())
                 .bookingReference(booking.getBookingReference())
@@ -70,6 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment = paymentRepository.save(payment);
         log.info("Payment created with transaction ID: {}", transactionId);
 
+        // Обрабатываем платёж (mock)
         boolean paymentSuccess = processPaymentMock(request);
 
         if (paymentSuccess) {
@@ -77,11 +85,15 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setProcessedAt(Instant.now());
 
             booking.setStatus(BookingStatus.CONFIRMED);
-            booking.setConfirmedAt(Instant.now());
-            booking.setExpiresAt(null);
+            booking.setConfirmedAt(LocalDateTime.now());
+
+            // ✅ ИСПРАВЛЕНО: устанавливаем expires_at в далёкое будущее вместо null
+            // Подтверждённые бронирования не истекают, поэтому ставим +100 лет
+            booking.setExpiresAt(LocalDateTime.now().plusYears(100));
+
             bookingRepository.save(booking);
 
-            // Create receipt after successful payment
+            // Создаём чек после успешной оплаты
             payment = paymentRepository.save(payment);
             receiptService.createReceipt(payment, booking);
 
@@ -111,25 +123,31 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findById(payment.getBookingId())
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found"));
 
-        if (!booking.getUserId().equals(userId)) {
+        // Проверяем доступ
+        if (!booking.getUser().getId().equals(userId)) {
             throw new PaymentNotFoundException("Payment not found or access denied");
         }
 
+        // Проверяем статус платежа
         if (payment.getStatus() != PaymentStatus.PROCESSING) {
             throw new PaymentProcessingException("Payment is not in PROCESSING status");
         }
 
+        // Подтверждаем платёж
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setProcessedAt(Instant.now());
 
+        // Подтверждаем бронирование
         booking.setStatus(BookingStatus.CONFIRMED);
-        booking.setConfirmedAt(Instant.now());
-        booking.setExpiresAt(null);
+        booking.setConfirmedAt(LocalDateTime.now());
+
+        // ✅ ИСПРАВЛЕНО: устанавливаем expires_at в далёкое будущее вместо null
+        booking.setExpiresAt(LocalDateTime.now().plusYears(100));
 
         bookingRepository.save(booking);
         payment = paymentRepository.save(payment);
 
-        // Create receipt after successful payment confirmation
+        // Создаём чек после подтверждения платежа
         receiptService.createReceipt(payment, booking);
 
         log.info("Payment confirmed for booking: {}", booking.getBookingReference());
@@ -171,17 +189,21 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findById(payment.getBookingId())
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found"));
 
-        if (!booking.getUserId().equals(userId)) {
+        // Проверяем доступ
+        if (!booking.getUser().getId().equals(userId)) {
             throw new PaymentNotFoundException("Payment not found or access denied");
         }
 
+        // Проверяем статус платежа
         if (payment.getStatus() != PaymentStatus.COMPLETED) {
             throw new PaymentProcessingException("Can only refund completed payments");
         }
 
+        // Возвращаем платёж
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setProcessedAt(Instant.now());
 
+        // Отменяем бронирование
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
@@ -190,6 +212,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         return paymentMapper.toPaymentResponse(payment);
     }
+
+    // ═══════════════════════════════════════
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // ═══════════════════════════════════════
 
     private String generateTransactionId() {
         return "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -202,19 +228,21 @@ public class PaymentServiceImpl implements PaymentService {
         return cardNumber.substring(cardNumber.length() - 4);
     }
 
+    /**
+     * Mock обработка платежа
+     * В продакшене здесь будет интеграция с платёжным шлюзом
+     */
     private boolean processPaymentMock(CreatePaymentRequest request) {
         log.info("Processing payment (MOCK) for method: {}", request.getPaymentMethod());
 
+        // Имитация задержки обработки
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
 
-        if (request.getCardNumber() != null && request.getCardNumber().endsWith("0000")) {
-            return false;
-        }
-
-        return true;
+        // Карты заканчивающиеся на 0000 будут отклонены
+        return request.getCardNumber() == null || !request.getCardNumber().endsWith("0000");
     }
 }

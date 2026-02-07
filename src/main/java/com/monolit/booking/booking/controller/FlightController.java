@@ -1,15 +1,20 @@
 package com.monolit.booking.booking.controller;
 
-import com.monolit.booking.booking.dto.request.*;
+import com.monolit.booking.booking.dto.request.CreateFlightRequest;
+import com.monolit.booking.booking.dto.request.FlightSearchRequest;
+import com.monolit.booking.booking.dto.request.UpdateFlightRequest;
 import com.monolit.booking.booking.dto.response.*;
+import com.monolit.booking.booking.enums.CabinClass;
 import com.monolit.booking.booking.enums.FlightSortBy;
-import com.monolit.booking.booking.enums.SeatClass;
 import com.monolit.booking.booking.service.interfaces.FlightService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/flights")
 @RequiredArgsConstructor
@@ -29,32 +35,53 @@ public class FlightController {
 
     private final FlightService flightService;
 
+    // ═══════════════════════════════════════
+    // ПОИСК РЕЙСОВ
+    // ═══════════════════════════════════════
+
     @GetMapping("/search")
-    @Operation(summary = "Search for flights", description = "Search available flights by route, date, and passengers")
-    public ResponseEntity<Page<FlightSearchResponse>> searchFlights(
-            @Parameter(description = "Departure airport IATA code (e.g., TAS)")
+    @Operation(
+            summary = "Search for flights",
+            description = "Search available flights by route, date, and number of passengers"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flights found successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid search parameters")
+    })
+    public ResponseEntity<Page<FlightResponse>> searchFlights(
+            @Parameter(description = "Origin airport IATA code (e.g., DME for Moscow)")
             @RequestParam String from,
-            @Parameter(description = "Arrival airport IATA code (e.g., MOW)")
+
+            @Parameter(description = "Destination airport IATA code (e.g., DXB for Dubai)")
             @RequestParam String to,
+
             @Parameter(description = "Departure date (YYYY-MM-DD)")
             @RequestParam LocalDate date,
-            @Parameter(description = "Number of passengers")
+
+            @Parameter(description = "Number of passengers (1-9)")
             @RequestParam(defaultValue = "1") Integer passengers,
-            @Parameter(description = "Seat class")
-            @RequestParam(defaultValue = "ECONOMY") SeatClass seatClass,
-            @Parameter(description = "Sort by")
+
+            @Parameter(description = "Cabin class preference")
+            @RequestParam(defaultValue = "ECONOMY") CabinClass cabinClass,  // ✅ исправлено
+
+            @Parameter(description = "Sort criteria")
             @RequestParam(defaultValue = "PRICE") FlightSortBy sortBy,
-            @Parameter(description = "Page number")
+
+            @Parameter(description = "Page number (0-based)")
             @RequestParam(defaultValue = "0") int page,
+
             @Parameter(description = "Page size")
             @RequestParam(defaultValue = "10") int size
     ) {
+        log.info("Flight search request: {} -> {}, date: {}, passengers: {}",
+                from, to, date, passengers);
+
         FlightSearchRequest request = FlightSearchRequest.builder()
-                .departureAirport(from)
-                .arrivalAirport(to)
+                .originCode(from)             // ✅ исправлено
+                .destinationCode(to)          // ✅ исправлено
                 .departureDate(date)
                 .passengers(passengers)
-                .seatClass(seatClass)
+                .cabinClass(cabinClass)       // ✅ исправлено
                 .sortBy(sortBy)
                 .build();
 
@@ -62,100 +89,202 @@ public class FlightController {
         return ResponseEntity.ok(flightService.searchFlights(request, pageable));
     }
 
+    // ═══════════════════════════════════════
+    // ПОЛУЧЕНИЕ ИНФОРМАЦИИ О РЕЙСЕ
+    // ═══════════════════════════════════════
+
     @GetMapping("/{id}")
-    @Operation(summary = "Get flight by ID", description = "Get detailed information about a specific flight")
+    @Operation(
+            summary = "Get flight by ID",
+            description = "Get detailed information about a specific flight"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight found"),
+            @ApiResponse(responseCode = "404", description = "Flight not found")
+    })
     public ResponseEntity<FlightDetailResponse> getFlightById(
             @Parameter(description = "Flight ID")
             @PathVariable Long id
     ) {
+        log.info("Get flight by id: {}", id);
         return ResponseEntity.ok(flightService.getFlightById(id));
     }
 
     @GetMapping("/number/{flightNumber}")
-    @Operation(summary = "Get flight by number", description = "Get detailed information about a flight by its flight number")
+    @Operation(
+            summary = "Get flight by number",
+            description = "Get detailed information about a flight by its flight number"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight found"),
+            @ApiResponse(responseCode = "404", description = "Flight not found")
+    })
     public ResponseEntity<FlightDetailResponse> getFlightByNumber(
-            @Parameter(description = "Flight number (e.g., HY501)")
+            @Parameter(description = "Flight number (e.g., SU1234)")
             @PathVariable String flightNumber
     ) {
+        log.info("Get flight by number: {}", flightNumber);
         return ResponseEntity.ok(flightService.getFlightByNumber(flightNumber));
     }
 
+    // ═══════════════════════════════════════
+    // УПРАВЛЕНИЕ РЕЙСАМИ (ADMIN)
+    // ═══════════════════════════════════════
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    @Operation(summary = "Create a new flight", description = "Create a new flight (Admin/Manager only)")
+    @Operation(
+            summary = "Create a new flight",
+            description = "Create a new flight (Admin/Manager only)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Flight created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid flight data"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     public ResponseEntity<FlightDetailResponse> createFlight(
             @Valid @RequestBody CreateFlightRequest request
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(flightService.createFlight(request));
+        log.info("Create flight request: {}", request.getFlightNumber());
+        FlightDetailResponse response = flightService.createFlight(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    @Operation(summary = "Update a flight", description = "Update flight details (Admin/Manager only)")
+    @Operation(
+            summary = "Update a flight",
+            description = "Update flight details (Admin/Manager only)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Flight not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid flight data"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     public ResponseEntity<FlightDetailResponse> updateFlight(
             @Parameter(description = "Flight ID")
             @PathVariable Long id,
+
             @Valid @RequestBody UpdateFlightRequest request
     ) {
+        log.info("Update flight request: {}", id);
         return ResponseEntity.ok(flightService.updateFlight(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete a flight", description = "Delete a flight (Admin only)")
+    @Operation(
+            summary = "Delete a flight",
+            description = "Delete a flight (Admin only)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Flight deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Flight not found"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     public ResponseEntity<Void> deleteFlight(
             @Parameter(description = "Flight ID")
             @PathVariable Long id
     ) {
+        log.info("Delete flight request: {}", id);
         flightService.deleteFlight(id);
         return ResponseEntity.noContent().build();
     }
 
+    // ═══════════════════════════════════════
+    // АЭРОПОРТЫ
+    // ═══════════════════════════════════════
+
     @GetMapping("/airports")
-    @Operation(summary = "Get all airports", description = "Get list of all active airports")
+    @Operation(
+            summary = "Get all airports",
+            description = "Get list of all active airports"
+    )
     public ResponseEntity<List<AirportResponse>> getAllAirports() {
+        log.info("Get all airports request");
         return ResponseEntity.ok(flightService.getAllAirports());
     }
 
     @GetMapping("/airports/search")
-    @Operation(summary = "Search airports", description = "Search airports by code, name, or city")
+    @Operation(
+            summary = "Search airports",
+            description = "Search airports by IATA code, name, or city"
+    )
     public ResponseEntity<List<AirportResponse>> searchAirports(
-            @Parameter(description = "Search query")
+            @Parameter(description = "Search query (city, name, or IATA code)")
             @RequestParam String query
     ) {
+        log.info("Search airports: {}", query);
         return ResponseEntity.ok(flightService.searchAirports(query));
     }
 
     @GetMapping("/airports/{iataCode}")
-    @Operation(summary = "Get airport by code", description = "Get airport details by IATA code")
+    @Operation(
+            summary = "Get airport by code",
+            description = "Get airport details by IATA code"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Airport found"),
+            @ApiResponse(responseCode = "404", description = "Airport not found")
+    })
     public ResponseEntity<AirportResponse> getAirportByCode(
-            @Parameter(description = "Airport IATA code (e.g., TAS)")
+            @Parameter(description = "Airport IATA code (e.g., DME, DXB)")
             @PathVariable String iataCode
     ) {
+        log.info("Get airport by code: {}", iataCode);
         return ResponseEntity.ok(flightService.getAirportByCode(iataCode));
     }
 
+    // ═══════════════════════════════════════
+    // АВИАКОМПАНИИ
+    // ═══════════════════════════════════════
+
     @GetMapping("/airlines")
-    @Operation(summary = "Get all airlines", description = "Get list of all active airlines")
+    @Operation(
+            summary = "Get all airlines",
+            description = "Get list of all active airlines"
+    )
     public ResponseEntity<List<AirlineResponse>> getAllAirlines() {
+        log.info("Get all airlines request");
         return ResponseEntity.ok(flightService.getAllAirlines());
     }
 
     @GetMapping("/airlines/{iataCode}")
-    @Operation(summary = "Get airline by code", description = "Get airline details by IATA code")
+    @Operation(
+            summary = "Get airline by code",
+            description = "Get airline details by IATA code"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Airline found"),
+            @ApiResponse(responseCode = "404", description = "Airline not found")
+    })
     public ResponseEntity<AirlineResponse> getAirlineByCode(
-            @Parameter(description = "Airline IATA code (e.g., HY)")
+            @Parameter(description = "Airline IATA code (e.g., SU, HY)")
             @PathVariable String iataCode
     ) {
+        log.info("Get airline by code: {}", iataCode);
         return ResponseEntity.ok(flightService.getAirlineByCode(iataCode));
     }
 
+    // ═══════════════════════════════════════
+    // ПОПУЛЯРНЫЕ НАПРАВЛЕНИЯ
+    // ═══════════════════════════════════════
+
     @GetMapping("/popular-destinations")
-    @Operation(summary = "Get popular destinations", description = "Get most popular destination airports")
+    @Operation(
+            summary = "Get popular destinations",
+            description = "Get most popular destination airports based on flight frequency"
+    )
     public ResponseEntity<List<PopularDestinationResponse>> getPopularDestinations(
-            @Parameter(description = "Number of destinations to return")
+            @Parameter(description = "Number of destinations to return (1-20)")
             @RequestParam(defaultValue = "5") int limit
     ) {
-        return ResponseEntity.ok(flightService.getPopularDestinations(limit));
+        log.info("Get popular destinations, limit: {}", limit);
+
+        // Ограничиваем максимальное значение
+        int safeLimit = Math.min(limit, 20);
+
+        return ResponseEntity.ok(flightService.getPopularDestinations(safeLimit));
     }
 }

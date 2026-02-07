@@ -1,18 +1,21 @@
 package com.monolit.booking.booking.controller;
 
+import com.monolit.booking.booking.dto.request.CancelBookingRequest;
 import com.monolit.booking.booking.dto.request.CreateBookingRequest;
 import com.monolit.booking.booking.dto.response.BookingDetailResponse;
 import com.monolit.booking.booking.dto.response.BookingResponse;
-import com.monolit.booking.booking.entity.Users;
+import com.monolit.booking.booking.exception.InsufficientSeatsException;
 import com.monolit.booking.booking.projection.UsersProjection;
 import com.monolit.booking.booking.service.interfaces.BookingService;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(name = "Bookings", description = "Booking management endpoints")
 public class BookingController {
+    private final Logger log = LoggerFactory.getLogger(BookingController.class);
 
     private final BookingService bookingService;
 
@@ -40,7 +44,7 @@ public class BookingController {
     public ResponseEntity<BookingResponse> createBooking(
             @Valid @RequestBody CreateBookingRequest request,
             @AuthenticationPrincipal UsersProjection userDetails
-    ) {
+    ) throws InsufficientSeatsException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(bookingService.createBooking(request, userDetails.getId()));
     }
@@ -84,13 +88,36 @@ public class BookingController {
 
     @PostMapping("/{reference}/cancel")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    @Operation(summary = "Cancel a booking", description = "Cancel an existing booking")
+    @Operation(
+            summary = "Cancel a booking",
+            description = "Cancel an existing booking and process refund if applicable"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Booking cancelled successfully"),
+            @ApiResponse(responseCode = "404", description = "Booking not found"),
+            @ApiResponse(responseCode = "400", description = "Booking cannot be cancelled"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     public ResponseEntity<BookingResponse> cancelBooking(
-            @Parameter(description = "Booking reference")
+            @Parameter(description = "Booking reference (e.g., ABC123)")
             @PathVariable String reference,
+
+            @Parameter(description = "Cancellation details (optional)")
+            @Valid @RequestBody(required = false) CancelBookingRequest request,
+
             @AuthenticationPrincipal UsersProjection userDetails
     ) {
-        return ResponseEntity.ok(bookingService.cancelBooking(reference, userDetails.getId()));
+        log.info("Cancel booking request: {}, user: {}", reference, userDetails.getUsername());
+
+        String reason = request != null ? request.getReason() : null;
+
+        BookingResponse response = bookingService.cancelBooking(
+                reference,
+                userDetails.getId(),
+                reason
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{reference}/ticket")

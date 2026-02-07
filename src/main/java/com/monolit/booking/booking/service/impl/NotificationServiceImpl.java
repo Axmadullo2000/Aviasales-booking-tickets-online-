@@ -3,6 +3,7 @@ package com.monolit.booking.booking.service.impl;
 import com.monolit.booking.booking.entity.Booking;
 import com.monolit.booking.booking.entity.Payment;
 import com.monolit.booking.booking.entity.Users;
+import com.monolit.booking.booking.repo.BookingRepository;
 import com.monolit.booking.booking.repo.UserRepository;
 import com.monolit.booking.booking.service.interfaces.EmailService;
 import com.monolit.booking.booking.service.interfaces.NotificationService;
@@ -18,12 +19,14 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Async
     public void notifyBookingCreated(Booking booking) {
         log.info("Notifying user about booking created: {}", booking.getBookingReference());
-        String email = getUserEmail(booking.getUserId());
+        // ✅ Получаем email напрямую из связи
+        String email = booking.getUser().getEmail();
         if (email != null) {
             log.info("Booking {} created - pending payment", booking.getBookingReference());
         }
@@ -33,7 +36,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Async
     public void notifyBookingConfirmed(Booking booking) {
         log.info("Notifying user about booking confirmed: {}", booking.getBookingReference());
-        String email = getUserEmail(booking.getUserId());
+        // ✅ Получаем email напрямую из связи
+        String email = booking.getUser().getEmail();
         if (email != null) {
             emailService.sendBookingConfirmation(booking, email);
         }
@@ -43,7 +47,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Async
     public void notifyBookingCancelled(Booking booking) {
         log.info("Notifying user about booking cancelled: {}", booking.getBookingReference());
-        String email = getUserEmail(booking.getUserId());
+        // ✅ Получаем email напрямую из связи
+        String email = booking.getUser().getEmail();
         if (email != null) {
             emailService.sendBookingCancellation(booking, email);
         }
@@ -67,13 +72,10 @@ public class NotificationServiceImpl implements NotificationService {
                 payment.getBookingReference(), payment.getFailureReason());
     }
 
-    private String getUserEmail(Long userId) {
-        return userRepository.findById(userId)
-                .map(Users::getEmail)
-                .orElse(null);
-    }
-
+    // ✅ Исправил: теперь через booking.getUser().getEmail()
     private String getUserEmailByBookingId(Long bookingId) {
-        return null;
+        return bookingRepository.findById(bookingId)
+                .map(booking -> booking.getUser().getEmail())
+                .orElse(null);
     }
 }

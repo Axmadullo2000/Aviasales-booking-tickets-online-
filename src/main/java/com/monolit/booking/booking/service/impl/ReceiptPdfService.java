@@ -95,7 +95,7 @@ public class ReceiptPdfService {
         Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.GRAY);
         Paragraph address = new Paragraph("41 Amir Temur Avenue, Tashkent 100060", infoFont);
         address.setAlignment(Element.ALIGN_RIGHT);
-        Paragraph phone = new Paragraph("Tel: +998 78 140 0101", infoFont);
+        Paragraph phone = new Paragraph("Tel: +998 99 749 4262", infoFont);
         phone.setAlignment(Element.ALIGN_RIGHT);
         Paragraph website = new Paragraph("www.uzairways.com", infoFont);
         website.setAlignment(Element.ALIGN_RIGHT);

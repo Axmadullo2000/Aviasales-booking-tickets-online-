@@ -20,8 +20,6 @@ public class EmailServiceImpl implements EmailService {
         log.info("  Your booking has been confirmed!");
         log.info("  Booking Reference: {}", booking.getBookingReference());
         log.info("  Status: {}", booking.getStatus());
-        log.info("  Total Price: ${}", booking.getTotalPrice());
-        log.info("  Number of Passengers: {}", booking.getPassengers().size());
         log.info("  Thank you for choosing our service!");
         log.info("=========================================");
     }
