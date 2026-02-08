@@ -1,571 +1,414 @@
-# ✈️ Aviasales - Flight Booking Platform
+✈️ Aviasales - The Brutally Honest README
+A monolithic flight booking system that actually works (most of the time). Built by one developer who learned Spring Boot, fought Hibernate, and survived to tell the tale.
+Show Image
+Show Image
+Show Image
+Show Image
+🎯 What This Actually Is
+This is a learning project that turned into a fully functional flight booking backend. No, it's not running any real flights (yet). Yes, the payment gateway is mocked. But everything else? It works.
+Current Status: Monolith is complete, tested, and stable. Next phase: splitting into microservices and building a proper frontend.
+✅ What Actually Works
+Things I'm Proud Of:
+✅ JWT Authentication
 
-A production-ready **Flight Booking System** built with **Java 21**, **Spring Boot 3.2+**, and enterprise-grade architecture. Features comprehensive flight search, booking management, payment processing with support for Uzbekistan payment cards (UzCard, Humo), and realistic PDF ticket generation.
+Token refresh works flawlessly
+Role-based authorization isn't just decorative
+Actually prevents unauthorized access (tested by accident many times)
 
-[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2+-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+✅ Flight Search
 
-## 🌟 Key Features
+Multi-criteria search that doesn't explode with N+1 queries
+Fought Hibernate for 2 days to avoid MultipleBagFetchException
+Implemented two-query strategy - not elegant, but rock solid
 
-### 🔐 Authentication & Security
-- **JWT-based authentication** with access and refresh tokens
-- **Role-based authorization** (USER, ADMIN) with `@PreAuthorize`
-- Secure password encryption with **BCrypt**
-- Custom `AuthenticatedUser` principal for Spring Security integration
-- Token expiration (15 min access, 7 days refresh)
+✅ Booking System
 
-### ✈️ Flight Management
-- **Smart flight search** with multiple filters (route, date, class, passengers)
-- **Real-time availability tracking** per seat class
-- **Dynamic pricing** support (Economy, Business, First Class)
-- Airport and airline comprehensive database
-- Popular destinations with statistics
-- Timezone-aware flight scheduling
+Handles 9 passengers per booking (tested with realistic Uzbek names)
+Mixed cabin classes in single booking (this was surprisingly hard)
+Auto-expiration scheduler that actually runs
+Cancellation with proper refund calculation based on time until departure
 
-### 📋 Booking System
-- **Multi-passenger bookings** with automated reference generation
-- **Booking lifecycle management** (PENDING → CONFIRMED → COMPLETED/CANCELLED)
-- **15-minute expiration** for unpaid bookings with auto-cleanup scheduler
-- **Optimized data fetching** preventing N+1 queries and Cartesian products
-- Booking history with pagination
-- Special requests and contact information support
+✅ Payment Processing
 
-### 💳 Payment Processing
-- **Multi-card support**:
-    - 🇺🇿 **UzCard** (8600)
-    - 🇺🇿 **Humo** (9860)
-    - 🌍 **Visa** (4)
-    - 🌍 **MasterCard** (5, 2221-2720)
-    - 🌍 **Maestro** (6)
-    - 🇷🇺 **МИР** (2200-2204)
-    - 🌍 **American Express** (34, 37)
-    - 🇨🇳 **UnionPay** (62)
-- **Smart card validation**:
-    - Luhn algorithm for international cards
-    - Custom validation for UzCard/Humo
-    - Expiry date verification (MM/YY format)
-    - CVV validation (3-4 digits based on card type)
-- **Payment deduplication**:
-    - Prevents multiple payments for single booking
-    - Failed attempt tracking (max 5 attempts)
-    - 30-minute cooldown after limit exceeded
-    - Automatic cleanup of stuck PROCESSING payments
-- **Transaction tracking** with unique IDs
-- **Payment status management** (PROCESSING, COMPLETED, FAILED, REFUNDED)
+Supports UzCard and Humo (because I'm from Uzbekistan 🇺🇿)
+Also Visa, MasterCard, МИР, AmEx, UnionPay
+Validates cards properly (Luhn algorithm for international, custom for local)
+Prevents duplicate payments (learned this the hard way)
+Failed attempt tracking with cooldown (max 5 tries, then 30-min timeout)
 
-### 🎫 Ticket Generation
-- **Professional PDF tickets** in Uzbekistan Airways style
-- **Boarding pass format** (21cm × 8cm)
-- **Complete flight information**:
-    - Passenger details with passport
-    - Flight route and schedule
-    - Seat assignment
-    - Baggage allowance
-    - E-ticket number with barcode
-- **Multi-language support** (English, Russian, Uzbek)
-- **Realistic design** matching actual airline tickets
+✅ PDF Generation
 
-### 👥 Passenger Management
-- Complete passenger profiles (name, passport, DOB, nationality)
-- Passport validation and expiry tracking
-- Multiple passengers per booking
-- Saved passenger profiles for repeat bookings
-- Gender and nationality information
+Generates actual boarding passes that look professional
+Styled for AeroStar Airlines (made-up name, real design)
+Barcode included (doesn't actually work at airports, obviously)
+Three languages: English, Russian, Uzbek
 
-## 🏗️ Tech Stack
+✅ Error Handling
 
-### Backend
+Custom exceptions for everything
+GlobalExceptionHandler that actually catches errors
+Meaningful error messages (not just "Internal Server Error")
+
+🚫 What Doesn't Work (Yet)
+Let's Be Honest:
+❌ Payment Gateway Integration
+java// This is basically the entire "payment processing"
+private boolean processPaymentMock(CreatePaymentRequest request) {
+String cardNumber = request.getCardNumber();
+// If card ends with 0000 → fail, otherwise → success
+return !cardNumber.endsWith("0000");
+}
+Yeah, it's mocked. Payme/Click integration is planned for microservices phase.
+❌ Email Notifications
+java// TODO: Actually send emails
+log.info("Email would be sent to: {}", booking.getContactEmail());
+The infrastructure is there. The SMTP config is not.
+❌ Seat Selection UI
+
+Backend can handle seat selection
+You can request "12A" and it works
+But there's no visual seat map
+Frontend will fix this
+
+❌ Real-time Updates
+
+No WebSockets yet
+Booking status? You gotta refresh
+Flight delays? Check manually
+This will be fixed with microservices + message queue
+
+❌ Flight Data Population
+
+Airports and airlines are manually inserted
+No automated flight schedule imports
+Admin has to create flights via Swagger
+Real airlines use GDS systems - we don't (yet)
+
+❌ File Storage
+
+PDFs are generated on-the-fly
+Not stored anywhere permanently
+No S3/MinIO integration
+Each download regenerates the PDF (wasteful, I know)
+
+🤔 Questionable Decisions (That I Made Anyway)
+1. Two-Query Fetching Strategy
+   java// Query 1: Get booking + tickets
+   // Query 2: Get booking + passengers
+   // Why? Because Hibernate throws MultipleBagFetchException
+   Why I did it: Spent 6 hours fighting Hibernate. This works. Moving on.
+   Better solution: GraphQL, or just accept Sets instead of Lists. But Lists are nicer for ordering.
+2. Storing Prices in Multiple Places
+
+Flight has basePrice, businessPrice, firstClassPrice
+Ticket has price, baseFare, taxes
+Payment has amount
+
+Why: Started simple, got complex, never refactored.
+Should fix: Yes. Will I? Probably in microservices rewrite.
+3. Dynamic Pricing That's Too Aggressive
+   javaif (daysUntilDeparture <= 1) {
+   return new BigDecimal("2.0");  // 2x price!
+   }
+   Reality: This is insane. Airlines don't double prices overnight.
+   Fix: Made it gentler (1.3x max). Still not realistic, but better.
+4. 15-Minute Booking Expiration
+   javaprivate static final int EXPIRATION_MINUTES = 15;
+   Why so short: Testing. Didn't want to wait hours.
+   Real airlines: 24 hours minimum. Will adjust for production.
+5. Scheduled Task Every 5 Minutes
+   java@Scheduled(cron = "0 */5 * * * *")
+   public void expireOldBookings() { ... }
+   Why: Seemed reasonable for demo.
+   Production: Should be event-driven, not polling. Kafka will handle this in microservices.
+   💀 The Painful Parts
+   Things That Took Forever:
+1. Hibernate MultipleBagFetchException (2 days)
+
+Multiple @OneToMany with FetchType.EAGER = death
+Solutions tried: 15+
+Solution that worked: Don't fetch multiple bags at once
+Lesson learned: Hibernate hates me
+
+2. JWT Filter Order (4 hours)
+
+Filter runs before Spring Security
+But needs Spring Security to work
+Circular dependency hell
+Fixed with: .addFilterBefore()
+
+3. Card Validation (1 day)
+
+UzCard/Humo don't use Luhn algorithm
+Every example online assumes Luhn
+Had to write custom validation
+Now supports both
+
+4. Timezone Handling (3 hours)
+   java// Moscow is UTC+3, Tashkent is UTC+5
+   // Storing in UTC, displaying in local
+   // Convert, convert, convert...
+   Still not 100% sure it's right in all cases.
+5. MapStruct Configuration (2 hours)
+   xml<plugin>
+   <groupId>org.apache.maven.plugins</groupId>
+   <artifactId>maven-compiler-plugin</artifactId>
+   <version>3.11.0</version>
+   <configuration>
+   <source>21</source>
+   <target>21</target>
+   <annotationProcessorPaths>
+   <!-- This order matters! -->
 ```
-Java 21 LTS          - Latest LTS with modern features
-Spring Boot 3.2+     - Enterprise application framework
-Spring Security 6    - Authentication & authorization
-Spring Data JPA      - Data persistence abstraction
-Hibernate 6          - Advanced ORM with query optimization
+Order matters. Lombok first, then MapStruct. Don't ask why.
+
+## 🏗️ Architecture (The Good and The Bad)
+
+### Current State: **Monolith**
+```
+┌──────────────────────────────────────┐
+│                                      │
+│         EVERYTHING IN ONE JAR        │
+│                                      │
+│  Auth │ Flights │ Bookings │ Payments│
+│                                      │
+│         PostgreSQL Database          │
+│                                      │
+└──────────────────────────────────────┘
 ```
 
-### Databases & Caching
+**Pros:**
+- Simple deployment
+- Easy to debug
+- Fast development
+- Works perfectly for current scale
+
+**Cons:**
+- One crash = everything down
+- Can't scale individual services
+- Changing booking logic requires full redeploy
+- Database is single point of failure
+
+### Future State: **Microservices** (Planned)
 ```
-PostgreSQL 15+       - Primary relational database
-Redis 7+             - Caching layer (optional)
-```
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│  Auth   │  │ Flight  │  │ Booking │  │ Payment │
+│ Service │  │ Service │  │ Service │  │ Service │
+└────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘
+│            │            │            │
+└────────────┴────────────┴────────────┘
+│
+┌─────▼─────┐
+│   Kafka   │
+└───────────┘
+Why split:
 
-### Libraries & Tools
-```
-OpenPDF 1.3.30       - PDF generation for tickets
-Lombok              - Boilerplate code reduction
-MapStruct           - Entity-DTO mapping
-Swagger/OpenAPI 3    - API documentation
-```
+Payment service can be updated independently
+Booking service can scale during peak times
+Flight search can have its own cache layer
+Failures are isolated
 
-### Build & DevOps
-```
-Maven 3.8+          - Dependency management
-Docker              - Containerization
-Docker Compose      - Multi-container orchestration
-```
+When: Next phase of development.
+📊 Performance (Real Numbers)
+What I Actually Tested:
+Search Flights: ~150ms (10 airports, 50 flights)
 
-## 🚀 Getting Started
+Acceptable for now
+Will need ElasticSearch for 1000+ flights
 
-### Prerequisites
+Create Booking: ~300ms (9 passengers, mixed classes)
 
-- **Java 21 LTS** ([Download](https://adoptium.net/))
-- **Maven 3.8+** ([Download](https://maven.apache.org/))
-- **Docker & Docker Compose** ([Download](https://www.docker.com/))
-- **PostgreSQL 15+** (or use Docker)
+Includes validation, seat assignment, price calculation
+Not bad for a monolith
 
-### Quick Start with Docker
+Generate PDF: ~500ms
 
-1. **Clone the repository**:
-```bash
+OpenPDF isn't the fastest
+Should cache or use async generation
+
+Database Queries:
+
+N+1 queries: Fixed (used JOIN FETCH)
+Cartesian product: Fixed (two-query strategy)
+Missing indexes: Fixed (added 8 indexes)
+
+🧪 Testing Reality
+Unit Tests:
+
+Coverage: ~60%
+Status: Most critical paths covered
+Reality: Not as many as I wanted, but core logic is tested
+
+Integration Tests:
+
+Status: Manual testing via Swagger
+Automation: Planned for microservices phase
+Reality: Postman collection exists, not automated
+
+Load Tests:
+
+Status: Haven't done them
+Why: It's a demo, not production
+Should I: Yes, eventually
+
+🚀 Getting Started (Actually Works)
+Prerequisites That Actually Matter:
+
+Java 21 - Not 17, not 11. Java 21. (Uses virtual threads, latest syntax)
+PostgreSQL 15+ - MySQL won't work, don't try
+Maven 3.8+ - Gradle? Not configured for this
+
+Setup (5 minutes, seriously):
+bash# 1. Clone
 git clone https://github.com/Axmadullo2000/Aviasales-booking-tickets-online-.git
 cd Aviasales-booking-tickets-online-
-```
 
-2. **Start services with Docker Compose**:
-```bash
-docker-compose up -d
-```
+# 2. Database
+docker-compose up -d postgres
 
-3. **Access the application**:
-    - API: http://localhost:8080
-    - Swagger UI: http://localhost:8080/swagger-ui.html
-
-### Manual Setup
-
-1. **Configure Database** (`application.yml`):
-```yaml
+# 3. Configure (application.yml)
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/booking_db
-    username: postgres
-    password: your_password
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-```
+datasource:
+url: jdbc:postgresql://localhost:5432/booking_db
+username: postgres
+password: postgres  # Change this!
 
-2. **Set JWT Configuration**:
-```yaml
-jwt:
-  secret: your-256-bit-secret-key-must-be-very-long-and-secure
-  expiration: 900000          # 15 minutes
-  refresh-expiration: 604800000  # 7 days
-```
-
-3. **Build and Run**:
-```bash
-mvn clean install
+# 4. Run
 mvn spring-boot:run
+
+# 5. Test
+curl http://localhost:8080/actuator/health
 ```
 
-## 📡 API Endpoints
+**Swagger UI**: http://localhost:8080/swagger-ui.html
 
-### Authentication
-```http
-POST   /api/v1/auth/register       - Register new user
-POST   /api/v1/auth/login          - Login (returns JWT tokens)
-POST   /api/v1/auth/refresh        - Refresh access token
+**Default Admin**:
 ```
+Email: axmadullo2000@gmail.com
+Password: admin123
+(Change this before deploying anywhere!)
+🎯 What's Next
+Roadmap (Actually Realistic):
+Phase 1: Microservices (Current)
 
-### Flights (Public)
-```http
-GET    /api/flights/search         - Search flights
-  ?from=TAS&to=DME&date=2026-03-15&passengers=2&cabinClass=ECONOMY
+Split into 4 services (Auth, Flight, Booking, Payment)
+Add Kafka for event-driven architecture
+Implement API Gateway
+Add service discovery (Eureka/Consul)
+Containerize everything (Docker)
 
-GET    /api/flights/{id}           - Get flight details
-GET    /api/flights/airports       - List all airports
-GET    /api/flights/airlines       - List all airlines
-GET    /api/flights/popular        - Popular destinations
-```
+Phase 2: Frontend (After Microservices)
 
-### Bookings (Authenticated)
-```http
-POST   /api/bookings               - Create new booking
-GET    /api/bookings               - Get user's bookings (paginated)
-GET    /api/bookings/{reference}   - Get booking details
-DELETE /api/bookings/{reference}   - Cancel booking
-GET    /api/bookings/{reference}/ticket - Download PDF ticket
-```
+React/Next.js UI
+Seat selection map
+Real-time booking updates
+Admin dashboard
+Mobile responsive
 
-### Payments (Authenticated)
-```http
-POST   /api/payments               - Create payment
-GET    /api/payments/status/{transactionId}  - Check payment status
-POST   /api/payments/confirm       - Confirm payment
-POST   /api/payments/{id}/refund   - Refund payment
-```
+Phase 3: Real Integrations
 
-## 💡 Usage Examples
+Payme/Click payment gateway
+Email service (SendGrid/AWS SES)
+SMS notifications
+GDS integration for real flight data
 
-### 1. Register & Login
-```bash
-# Register
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "email": "john@example.com",
-    "password": "SecurePass123!",
-    "firstName": "John",
-    "lastName": "Doe",
-    "phoneNumber": "+998901234567"
-  }'
+Phase 4: Production Features
 
-# Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "password": "SecurePass123!"
-  }'
-```
+Kubernetes deployment
+Monitoring (Prometheus + Grafana)
+Distributed tracing (Jaeger)
+Load balancing
+CI/CD pipeline
 
-### 2. Search Flights
-```bash
-curl "http://localhost:8080/api/flights/search?\
-from=TAS&to=DME&date=2026-03-15&passengers=2&cabinClass=ECONOMY"
-```
+🤷 Known Issues
+Bugs I Know About:
 
-### 3. Create Booking
-```bash
-curl -X POST http://localhost:8080/api/bookings \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "flightId": 123,
-    "cabinClass": "ECONOMY",
-    "passengers": [
-      {
-        "firstName": "Alisher",
-        "lastName": "Mamadaliyev",
-        "passportNumber": "AB1234567",
-        "dateOfBirth": "1995-05-15",
-        "nationality": "UZ",
-        "gender": "MALE",
-        "passportCountry": "UZ",
-        "passportExpiry": "2030-12-31"
-      }
-    ],
-    "contactEmail": "alisher@example.com",
-    "contactPhone": "+998901234567",
-    "specialRequests": "Window seat preferred"
-  }'
-```
+Receipt flight_details can overflow - Fixed by changing to TEXT
+Dynamic pricing too aggressive - Made gentler, still not realistic
+Timezone edge cases - Works for Tashkent/Moscow, may break elsewhere
+PDF generation is synchronous - Blocks request thread
+No rate limiting - Can spam the API freely
 
-### 4. Pay with UzCard
-```bash
-curl -X POST http://localhost:8080/api/payments \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "bookingReference": "ABC123",
-    "amount": 17000.00,
-    "paymentMethod": "CARD",
-    "cardNumber": "8600123456781234",
-    "expiryDate": "12/27",
-    "cvv": "123"
-  }'
-```
+Won't Fix (In Monolith):
 
-### 5. Download Ticket
-```bash
-curl -X GET "http://localhost:8080/api/bookings/ABC123/ticket" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  --output ticket.pdf
-```
+Real-time updates → WebSockets in microservices
+Distributed transactions → Saga pattern in microservices
+Service mesh → Istio with Kubernetes
+Horizontal scaling → When we actually need it
 
-## 🏛️ Architecture
+💭 Lessons Learned
+Technical:
 
-### Project Structure
-```
-src/main/java/com/monolit/booking/
-├── config/              # Application configuration
-│   ├── SecurityConfig.java      # Spring Security setup
-│   ├── SwaggerConfig.java       # API documentation
-│   └── SchedulerConfig.java     # Scheduled tasks
-├── controller/          # REST API endpoints
-│   ├── AuthController.java
-│   ├── FlightController.java
-│   ├── BookingController.java
-│   └── PaymentController.java
-├── dto/                 # Data Transfer Objects
-│   ├── request/        # Request DTOs
-│   └── response/       # Response DTOs
-├── entity/             # JPA entities
-│   ├── User.java
-│   ├── Flight.java
-│   ├── Booking.java
-│   ├── Ticket.java
-│   ├── Payment.java
-│   └── Passenger.java
-├── enums/              # Enumerations
-│   ├── BookingStatus.java
-│   ├── PaymentStatus.java
-│   ├── CabinClass.java
-│   └── CardType.java
-├── exception/          # Custom exceptions & handlers
-│   ├── GlobalExceptionHandler.java
-│   ├── BookingNotFoundException.java
-│   └── PaymentProcessingException.java
-├── mapper/             # Entity-DTO mappers
-├── repository/         # Spring Data JPA repositories
-├── security/           # Security components
-│   ├── JwtTokenProvider.java
-│   ├── JwtAuthenticationFilter.java
-│   └── AuthenticatedUser.java
-├── service/            # Business logic
-│   ├── interfaces/
-│   └── impl/
-│       ├── BookingServiceImpl.java
-│       ├── PaymentServiceImpl.java
-│       └── TicketPdfService.java
-└── scheduler/          # Scheduled tasks
-    └── BookingExpirationScheduler.java
-```
+Hibernate is both amazing and terrible - JOIN FETCH everything, or suffer
+JWT is simple until it isn't - Refresh tokens, token rotation, blacklisting
+Card validation is surprisingly complex - Every country is different
+Timezones are hard - UTC for storage, local for display, always
+PDF generation needs caching - Or async, or both
 
-### Entity Relationships
-```
-┌─────────┐
-│  User   │────────────┐
-└─────────┘            │
-                       │ 1:N
-                  ┌─────────┐
-                  │ Booking │────────────┐
-                  └─────────┘            │
-                       │                 │ 1:N
-                       │ 1:N        ┌─────────┐
-                  ┌─────────┐       │ Ticket  │
-                  │Passenger│       └─────────┘
-                  └─────────┘            │
-                                         │ N:1
-                                    ┌─────────┐
-                                    │ Flight  │
-                                    └─────────┘
-                                         │
-                         ┌───────────────┼───────────────┐
-                         │               │               │
-                    ┌─────────┐     ┌─────────┐    ┌─────────┐
-                    │Airport  │     │Airport  │    │ Airline │
-                    │(Origin) │     │(Dest.)  │    └─────────┘
-                    └─────────┘     └─────────┘
-```
+Personal:
 
-### Security Flow
-```
-Client Request
-     ↓
-JWT Authentication Filter
-     ↓
-Token Validation
-     ↓
-SecurityContext Population
-     ↓
-@PreAuthorize Check
-     ↓
-Controller Method
-     ↓
-@AuthenticationPrincipal
-     ↓
-Service Layer
-```
+Don't over-engineer - Monolith first, then split
+Mock when needed - Real payment gateway isn't essential for MVP
+Test core paths - 100% coverage is a myth
+Documentation matters - Even for solo projects
+Realistic data helps - Uzbek names made testing feel real
 
-### Payment Flow
-```
-Create Payment Request
-     ↓
-Validate Card (Type Detection)
-     ↓
-Check Existing Payments
-     ↓
-Validate Attempts Limit
-     ↓
-Create Payment (PROCESSING)
-     ↓
-Process Payment (Mock/Real Gateway)
-     ↓
-Update Status (COMPLETED/FAILED)
-     ↓
-Update Booking Status
-     ↓
-Generate Receipt & Ticket
-```
+🤝 Contributing
+Can You Help?
+Yes! Here's how:
+Code:
 
-## ⚡ Performance Optimizations
+Bug fixes welcome
+Performance improvements appreciated
+Don't refactor everything at once
 
-### 1. Query Optimization
-```java
-// Two-query strategy to avoid MultipleBagFetchException
-// Query 1: Booking + Tickets
-Booking booking = em.createQuery(
-    "SELECT DISTINCT b FROM Booking b " +
-    "LEFT JOIN FETCH b.tickets " +
-    "WHERE b.id = :id", Booking.class)
-    .getSingleResult();
+Ideas:
 
-// Query 2: Initialize passengers separately
-em.createQuery(
-    "SELECT DISTINCT b FROM Booking b " +
-    "LEFT JOIN FETCH b.passengers " +
-    "WHERE b.id = :id", Booking.class)
-    .getSingleResult();
-```
+UX improvements
+Feature suggestions
+Architecture feedback
 
-### 2. Database Indexes
-```sql
-CREATE INDEX idx_booking_reference ON bookings(booking_reference);
-CREATE INDEX idx_booking_user_id ON bookings(user_id);
-CREATE INDEX idx_payment_booking_id ON payments(booking_id);
-CREATE INDEX idx_payment_status ON payments(status);
-CREATE INDEX idx_flight_route ON flights(origin_id, destination_id);
-CREATE INDEX idx_flight_date ON flights(departure_time);
-```
+No Thanks:
 
-### 3. Caching Strategy
-- Flight search results: 5-minute TTL
-- Airport/Airline data: 24-hour TTL
-- User session: Redis
-- JPA second-level cache for entities
+"Why didn't you use [framework X]?" - Too late
+"This should be in [language Y]!" - It's Java, deal with it
+"You should rewrite everything" - I know
 
-## 🧪 Testing
+How to Contribute:
+bashgit checkout -b feature/your-awesome-feature
+git commit -m "feat: actually describe what you did"
+git push origin feature/your-awesome-feature
+Then create a PR with:
 
-### Test Cards
+What you changed
+Why you changed it
+How you tested it
 
-#### UzCard (Uzbekistan)
-```
-Card Number: 8600 1234 5678 1234
-Expiry: 12/27
-CVV: 123
-```
+📝 License
+MIT - Do whatever you want. Copy it, sell it, make it better. Just don't blame me if it breaks.
+🙏 Special Thanks
 
-#### Humo (Uzbekistan)
-```
-Card Number: 9860 1234 5678 1234
-Expiry: 12/27
-CVV: 456
-```
+Spring Boot Team - For making Java development not suck
+Hibernate Team - For the pain that taught me SQL
+Stack Overflow - For solving every error I encountered
+ChatGPT/Claude - For explaining Kafka when I was too tired to read docs
+Coffee - For existing
 
-#### Visa (International)
-```
-Card Number: 4111 1111 1111 1111
-Expiry: 04/27
-CVV: 123
-```
+👨‍💻 Author
+Axmadullo Ubaydullayev
 
-#### Test Decline (ends with 0000)
-```
-Card Number: 4111 1111 1111 0000
-Expiry: 04/27
-CVV: 123
-Status: FAILED
-```
+GitHub: @Axmadullo2000
+Email: axmadullo2000@gmail.com
+Location: Uzbekistan 🇺🇿
+Status: Currently refactoring everything into microservices
 
-### Run Tests
-```bash
-mvn test
-mvn verify
-```
 
-## 📊 Key Technical Decisions
+📌 Final Thoughts
+This project started as a learning exercise and became a fully functional booking system. It's not perfect. The code has quirks. Some decisions were compromises. But it works, it's documented, and it's ready for the next phase.
+Next up: Splitting this monolith into microservices and building a frontend that actually looks good.
+⭐ Star if you like honest READMEs
+🐛 Issues welcome (I probably know about it already)
+💬 Questions? Open an issue, I'll answer
 
-### 1. JWT Authentication
-- **Why**: Stateless, scalable authentication
-- **Implementation**: Custom filter + Spring Security integration
-- **Storage**: Access token in memory, refresh token in HTTP-only cookie
-
-### 2. Two-Query Fetching
-- **Problem**: Hibernate MultipleBagFetchException
-- **Solution**: Split collections into separate queries
-- **Benefit**: No Cartesian product, maintains List semantics
-
-### 3. Card Type Detection
-- **Why**: Support local and international cards
-- **Implementation**: Prefix-based detection with smart validation
-- **Cards**: UzCard, Humo (no Luhn), Visa, MasterCard (with Luhn)
-
-### 4. Payment Deduplication
-- **Why**: Prevent double charges from duplicate requests
-- **Implementation**: Status checking + attempt limiting + cooldown
-- **Protection**: COMPLETED check, PROCESSING lock, 5-attempt limit
-
-### 5. Scheduled Expiration
-- **Why**: Auto-cleanup unpaid bookings
-- **Implementation**: @Scheduled with cron (every 5 minutes)
-- **Action**: PENDING → EXPIRED after 15 minutes
-
-## 🔮 Future Enhancements
-
-### Payment Integration
-- [ ] **Payme** integration for UzCard/Humo
-- [ ] **Click** payment gateway
-- [ ] **Stripe** for international cards
-- [ ] **PayPal** support
-- [ ] **Idempotency keys** for payment deduplication
-
-### Features
-- [ ] **Seat selection** with aircraft seat maps
-- [ ] **Round-trip bookings** with return flights
-- [ ] **Dynamic pricing** based on demand and time
-- [ ] **Calendar view** with price comparison
-- [ ] **Email notifications** for booking confirmations
-- [ ] **SMS notifications** for flight updates
-- [ ] **Multi-language** support (UZ, RU, EN)
-- [ ] **Loyalty program** with points and rewards
-
-### Technical
-- [ ] **Microservices** migration (User, Flight, Booking, Payment)
-- [ ] **Event-driven** architecture with Kafka
-- [ ] **GraphQL** API for flexible queries
-- [ ] **WebSocket** for real-time updates
-- [ ] **ElasticSearch** for advanced flight search
-- [ ] **Admin dashboard** for management
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### Commit Message Convention
-```
-feat: add new feature
-fix: bug fix
-docs: documentation update
-style: code formatting
-refactor: code refactoring
-test: add tests
-chore: maintenance tasks
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**Axmadullo Ubaydullayev**
-- GitHub: [@Axmadullo2000](https://github.com/Axmadullo2000)
-- Email: axmadullo2000@gmail.com
-
-## 🙏 Acknowledgments
-
-- Spring Boot team for excellent framework
-- Uzbekistan Airways for ticket design inspiration
-- OpenPDF team for PDF generation library
-
----
-
-⭐ **Star this repository** if you find it helpful!
-
-📚 **Check the Wiki** for detailed documentation
-
-🐛 **Report Issues** on GitHub Issues page
+Last updated: February 2026
+Status: Monolith Complete ✅ | Microservices In Progress 🚧 | Frontend Planned 📱
