@@ -242,17 +242,15 @@ public class PricingServiceImpl implements PricingService {
      */
     private BigDecimal getTimeMultiplier(long daysUntilDeparture) {
         if (daysUntilDeparture <= 1) {
-            return new BigDecimal("2.0");      // +100% в последний день
+            return new BigDecimal("1.3");      // +30% в последний день (было +100%)
         } else if (daysUntilDeparture <= 3) {
-            return new BigDecimal("1.5");      // +50% за 3 дня
+            return new BigDecimal("1.15");     // +15% за 3 дня (было +50%)
         } else if (daysUntilDeparture <= 7) {
-            return new BigDecimal("1.3");      // +30% за неделю
+            return new BigDecimal("1.1");      // +10% за неделю (было +30%)
         } else if (daysUntilDeparture <= 14) {
-            return new BigDecimal("1.15");     // +15% за 2 недели
-        } else if (daysUntilDeparture <= 30) {
-            return BigDecimal.ONE;              // Нормальная цена за месяц
+            return new BigDecimal("1.05");     // +5% за 2 недели (было +15%)
         } else {
-            return new BigDecimal("0.85");     // -15% при раннем бронировании
+            return BigDecimal.ONE;              // Нормальная цена
         }
     }
 

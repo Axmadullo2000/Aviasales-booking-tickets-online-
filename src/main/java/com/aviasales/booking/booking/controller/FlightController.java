@@ -175,22 +175,51 @@ public class FlightController {
         return ResponseEntity.ok(flightService.updateFlight(id, request));
     }
 
+    /**
+     * ✅ ОТМЕНИТЬ РЕЙС (рекомендуется использовать вместо удаления)
+     */
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Cancel a flight",
+            description = "Cancel a flight by setting its status to CANCELLED. Use this for flights with existing bookings."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight cancelled successfully"),
+            @ApiResponse(responseCode = "404", description = "Flight not found"),
+            @ApiResponse(responseCode = "400", description = "Flight is already cancelled or completed"),
+            @ApiResponse(responseCode = "403", description = "Access denied - admin only")
+    })
+    public ResponseEntity<FlightDetailResponse> cancelFlight(
+            @Parameter(description = "Flight ID", example = "41")
+            @PathVariable Long id
+    ) {
+        log.info("PUT /api/flights/{}/cancel - Cancelling flight", id);
+        FlightDetailResponse response = flightService.cancelFlight(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * ✅ УДАЛИТЬ РЕЙС (только для рейсов БЕЗ билетов)
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Delete a flight",
-            description = "Delete a flight (Admin only)"
+            description = "Permanently delete a flight. Only works for flights with NO existing bookings. " +
+                    "For flights with bookings, use the cancel endpoint instead."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Flight deleted successfully"),
             @ApiResponse(responseCode = "404", description = "Flight not found"),
-            @ApiResponse(responseCode = "403", description = "Access denied")
+            @ApiResponse(responseCode = "409", description = "Cannot delete - flight has existing bookings"),
+            @ApiResponse(responseCode = "403", description = "Access denied - admin only")
     })
     public ResponseEntity<Void> deleteFlight(
-            @Parameter(description = "Flight ID")
+            @Parameter(description = "Flight ID", example = "41")
             @PathVariable Long id
     ) {
-        log.info("Delete flight request: {}", id);
+        log.info("DELETE /api/flights/{} - Deleting flight", id);
         flightService.deleteFlight(id);
         return ResponseEntity.noContent().build();
     }

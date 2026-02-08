@@ -38,4 +38,6 @@ public interface FlightService {
     List<PopularDestinationResponse> getPopularDestinations(int limit);
 
     Flight findById(Long flightId);
+
+    FlightDetailResponse cancelFlight(Long id);
 }

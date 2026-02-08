@@ -17,6 +17,7 @@ import com.aviasales.booking.booking.mapper.FlightMapper;
 import com.aviasales.booking.booking.repo.AirlineRepository;
 import com.aviasales.booking.booking.repo.AirportRepository;
 import com.aviasales.booking.booking.repo.FlightRepository;
+import com.aviasales.booking.booking.repo.TicketRepository;
 import com.aviasales.booking.booking.service.interfaces.FlightService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,8 @@ public class FlightServiceImpl implements FlightService {
     private final FlightRepository flightRepository;
     private final AirportRepository airportRepository;
     private final AirlineRepository airlineRepository;
+    private final TicketRepository ticketRepository;
+
     private final FlightMapper flightMapper;
 
     // ═══════════════════════════════════════
@@ -258,24 +261,6 @@ public class FlightServiceImpl implements FlightService {
     }
 
     // ═══════════════════════════════════════
-    // УДАЛЕНИЕ РЕЙСА
-    // ═══════════════════════════════════════
-
-    @Override
-    @Transactional
-    @CacheEvict(value = "flights", key = "#id")
-    public void deleteFlight(Long id) {
-        log.info("Deleting flight: {}", id);
-
-        if (!flightRepository.existsById(id)) {
-            throw new FlightNotFoundException(id);
-        }
-
-        flightRepository.deleteById(id);
-        log.info("Flight deleted: {}", id);
-    }
-
-    // ═══════════════════════════════════════
     // АЭРОПОРТЫ
     // ═══════════════════════════════════════
 
@@ -366,5 +351,90 @@ public class FlightServiceImpl implements FlightService {
     public Flight findById(Long flightId) {
         return flightRepository.findById(flightId)
                 .orElseThrow(() -> new RuntimeException("Flight not found: " + flightId));
+    }
+
+    /**
+     * Отменить рейс
+     */
+    @Override
+    @Transactional
+    public FlightDetailResponse cancelFlight(Long id) {
+        log.info("Cancelling flight: {}", id);
+
+        Flight flight = flightRepository.findById(id)
+                .orElseThrow(() -> new FlightNotFoundException(id));
+
+        // Проверка: рейс уже отменён?
+        if (flight.getStatus() == FlightStatus.CANCELLED) {
+            log.warn("Flight {} is already cancelled", id);
+            throw new IllegalStateException("Flight is already cancelled");
+        }
+
+        // Проверка: рейс уже завершён?
+        if (flight.getStatus() == FlightStatus.COMPLETED) {
+            log.warn("Cannot cancel completed flight {}", id);
+            throw new IllegalStateException("Cannot cancel completed flight");
+        }
+
+        // Получаем количество билетов
+        long ticketCount = ticketRepository.countByFlightId(id);
+        int bookedSeats = flight.getTotalSeats() - flight.getAvailableSeats();
+
+        // Отменяем рейс
+        flight.setStatus(FlightStatus.CANCELLED);
+        flight = flightRepository.save(flight);
+
+        log.info("Flight {} cancelled. Flight number: {}, Booked tickets: {}, Booked seats: {}/{}",
+                id,
+                flight.getFlightNumber(),
+                ticketCount,
+                bookedSeats,
+                flight.getTotalSeats());
+
+        // TODO: Отправить уведомления пассажирам о отмене рейса
+        // notificationService.notifyFlightCancellation(flight);
+
+        return flightMapper.toFlightDetailResponse(flight);
+    }
+
+    /**
+     * Удалить рейс (только если нет билетов)
+     */
+    @Override
+    @Transactional
+    public void deleteFlight(Long id) {
+        log.info("Attempting to delete flight: {}", id);
+
+        Flight flight = flightRepository.findById(id)
+                .orElseThrow(() -> new FlightNotFoundException(id));
+
+        // ✅ Проверка: есть ли билеты на этот рейс?
+        long ticketCount = ticketRepository.countByFlightId(id);
+
+        if (ticketCount > 0) {
+            log.error("Cannot delete flight {} ({}) - {} tickets exist",
+                    id, flight.getFlightNumber(), ticketCount);
+
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Cannot delete flight %s with %d existing ticket(s). " +
+                                    "Please use the cancel endpoint (/api/flights/%d/cancel) instead.",
+                            flight.getFlightNumber(),
+                            ticketCount,
+                            id
+                    )
+            );
+        }
+
+        // ✅ Проверка: есть ли забронированные места?
+        int bookedSeats = flight.getTotalSeats() - flight.getAvailableSeats();
+        if (bookedSeats > 0) {
+            log.warn("Flight {} has {} booked seats but no tickets found", id, bookedSeats);
+        }
+
+        // Удаляем рейс
+        flightRepository.delete(flight);
+
+        log.info("Flight {} ({}) deleted successfully", id, flight.getFlightNumber());
     }
 }
