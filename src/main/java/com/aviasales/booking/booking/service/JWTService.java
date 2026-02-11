@@ -29,7 +29,7 @@ public class JWTService {
                 .claim("roles", user.getRoleNames())
                 .claim("type", "access")
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 8 * 60 * 60 * 1000))
+                .expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000))
                 .signWith(secretKey)
                 .compact();
     }

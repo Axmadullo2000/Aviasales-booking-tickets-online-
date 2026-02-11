@@ -47,15 +47,15 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers(
-                                "/api/flights/search",
-                                "/api/flights/airports",
-                                "/api/flights/airports/**",
-                                "/api/flights/airlines",
-                                "/api/flights/airlines/**",
-                                "/api/flights/popular-destinations"
+                                "/api/v1/flights/search",
+                                "/api/v1/flights/airports",
+                                "/api/v1/flights/airports/**",
+                                "/api/v1/flights/airlines",
+                                "/api/v1/flights/airlines/**",
+                                "/api/v1/flights/popular-destinations"
                         ).permitAll()
-                        .requestMatchers("/api/flights/{id}").permitAll()
-                        .requestMatchers("/api/flights/number/**").permitAll()
+                        .requestMatchers("/api/v1/flights/{id}").permitAll()
+                        .requestMatchers("/api/v1/flights/number/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -57,8 +57,10 @@ public class Receipt {
     @Column(length = 4)
     private String cardLastFour;
 
+    @Column(columnDefinition = "TEXT")
     private String passengerName;
 
+    @Column(columnDefinition = "TEXT")
     private String flightDetails;
 
     @CreationTimestamp
