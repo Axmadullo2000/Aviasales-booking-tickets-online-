@@ -4,7 +4,6 @@ import com.aviasales.booking.booking.dto.response.CalendarPriceResponse;
 import com.aviasales.booking.booking.dto.response.DynamicPriceResponse;
 import com.aviasales.booking.booking.entity.Flight;
 import com.aviasales.booking.booking.enums.CabinClass;
-import com.aviasales.booking.booking.repo.FlightRepository;
 import com.aviasales.booking.booking.service.interfaces.CalendarService;
 import com.aviasales.booking.booking.service.interfaces.FlightService;
 import com.aviasales.booking.booking.service.interfaces.PricingService;
@@ -25,7 +24,7 @@ import java.time.YearMonth;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/pricing")
+@RequestMapping("/api/v1/pricing")
 @RequiredArgsConstructor
 @Tag(name = "Pricing", description = "Dynamic pricing and calendar APIs")
 public class PricingController {

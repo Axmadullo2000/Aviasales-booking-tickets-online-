@@ -7,7 +7,7 @@ public enum CardType {
     UZCARD("UzCard", "5614"),
     HUMO("Humo", "9860"),
     VISA("Visa", "4"),
-    MASTERCARD("MasterCard", "5"),
+    MASTERCARD("MasterCard", "51"),
     MAESTRO("Maestro", "6"),
     MIR("МИР", "2"),
     AMERICAN_EXPRESS("American Express", "34", "37"),

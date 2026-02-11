@@ -33,7 +33,7 @@ import java.nio.file.AccessDeniedException;
 
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
 @Tag(name = "Bookings", description = "Booking management endpoints")
 public class BookingController {

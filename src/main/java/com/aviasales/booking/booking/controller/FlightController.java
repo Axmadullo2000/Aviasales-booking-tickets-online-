@@ -30,7 +30,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/flights")
+@RequestMapping("/api/v1/flights")
 @RequiredArgsConstructor
 @Tag(name = "Flights", description = "Flight search and management endpoints")
 public class FlightController {

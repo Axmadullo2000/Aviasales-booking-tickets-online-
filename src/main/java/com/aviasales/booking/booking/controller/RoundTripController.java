@@ -27,7 +27,7 @@ import java.time.LocalDate;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/flights")
+@RequestMapping("/api/v1/flights")
 @RequiredArgsConstructor
 @Tag(name = "Round Trip", description = "Round-trip flight search with discounts")
 public class RoundTripController {
